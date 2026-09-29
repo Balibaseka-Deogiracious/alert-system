@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Campus property recovery</title>
+  <desc id="desc">An illustrated campus building with a secure recovery station and location marker.</desc>
+  <rect width="1200" height="760" fill="#dce9d8"/>
+  <circle cx="1010" cy="136" r="82" fill="#f3c969"/>
+  <path d="M0 560c180-84 316-70 474-8 190 75 336 55 474-8 104-48 177-45 252-6v222H0z" fill="#a8c6a4"/>
+  <path d="M0 654c155-58 283-44 436 13 148 55 302 55 443-7 115-50 213-49 321-6v106H0z" fill="#6e9c83"/>
+  <path d="M218 492V286h764v206" fill="#f7f5e9" stroke="#234543" stroke-width="12"/>
+  <path d="M170 300 600 106l430 194z" fill="#234543"/>
+  <path d="M262 300h676" stroke="#b7d66d" stroke-width="22"/>
+  <path d="M520 492V350h160v142" fill="#d27a54" stroke="#234543" stroke-width="10"/>
+  <g fill="#9ab9b0" stroke="#234543" stroke-width="9">
+    <path d="M300 350h86v142h-86zM422 350h86v142h-86zM692 350h86v142h-86zM814 350h86v142h-86z"/>
+  </g>
+  <rect x="825" y="458" width="164" height="106" rx="12" fill="#d27a54" stroke="#234543" stroke-width="10"/>
+  <path d="M858 458v-28c0-28 22-50 49-50s49 22 49 50v28" fill="none" stroke="#234543" stroke-width="12"/>
+  <circle cx="907" cy="503" r="12" fill="#f7f5e9"/>
+  <path d="M907 515v23" stroke="#f7f5e9" stroke-width="9"/>
+  <path d="M1035 236c0-42 34-76 76-76s76 34 76 76c0 58-76 122-76 122s-76-64-76-122z" fill="#d27a54" stroke="#234543" stroke-width="10"/>
+  <circle cx="1111" cy="234" r="25" fill="#f7f5e9"/>
+</svg>
