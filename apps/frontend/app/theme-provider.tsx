@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { LogOut, Moon, Sun, UserRound } from "lucide-react";
+import { LogOut, Moon, Settings2, Sun, UserRound } from "lucide-react";
 
 type Theme = "light" | "dark";
 
@@ -43,11 +43,21 @@ export function AdminThemeToggle() {
   return <div className="admin-theme-toggle"><ThemeToggle /></div>;
 }
 
-export function ProfileDropdown({ name, initials, role, summary, email }: { name: string; initials: string; role: string; summary: string; email: string }) {
+export function ProfileDropdown({ name, initials, role, summary, email, resetLabel, onReset }: { name: string; initials: string; role: string; summary: string; email: string; resetLabel?: string; onReset?: () => void }) {
   const [open, setOpen] = useState(false);
+
+  function handleReset() {
+    setOpen(false);
+    if (onReset) {
+      onReset();
+      return;
+    }
+    window.localStorage.removeItem("unialert-admin-profile");
+  }
 
   function handleLogout() {
     window.localStorage.removeItem("unialert-session");
+    window.localStorage.removeItem("unialert-admin-profile");
     window.location.assign("/");
   }
 
@@ -57,6 +67,7 @@ export function ProfileDropdown({ name, initials, role, summary, email }: { name
     </button>
     {open && <div className="profile-dropdown" role="menu">
       <div className="profile-summary"><span className="profile-summary-icon"><UserRound size={16} /></span><span><b>{name}</b><small>{summary}</small><small>{email}</small></span></div>
+      {resetLabel && <button className="profile-reset" type="button" role="menuitem" onClick={handleReset}><Settings2 size={14} /> {resetLabel}</button>}
       <button className="profile-logout" type="button" role="menuitem" onClick={handleLogout}><LogOut size={15} /> Logout</button>
     </div>}
   </div>;

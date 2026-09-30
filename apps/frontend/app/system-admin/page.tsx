@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Activity, ArrowDownToLine, Check, ChevronDown, CircleHelp, ClipboardCheck,
   Database, FileClock, FileText, KeyRound, LayoutDashboard, MapPin, Menu,
@@ -9,7 +8,7 @@ import {
   ToggleLeft, Trash2, UserPlus, UsersRound, X
 } from "lucide-react";
 import { ProfileDropdown, ThemeToggle } from "../theme-provider";
-import { AdminDashboard, AdminUser, createAdminModerator, deleteAdminUser, getAdminDashboard, getSession, registerAccount, Session, updateAdminUser } from "../auth";
+import { AdminDashboard, AdminUser, createAdminModerator, deleteAdminUser, getAdminDashboard, registerAccount, updateAdminUser } from "../auth";
 
 type Role = {
   name: string;
@@ -188,8 +187,6 @@ function SectionCharts({ data }: { data: SectionChartData }) {
 }
 
 export default function SystemAdminPage() {
-  const router = useRouter();
-  const [session, setSession] = useState<Session | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("Overview");
   const [selectedRole, setSelectedRole] = useState("System Administrator");
@@ -204,18 +201,12 @@ export default function SystemAdminPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const session = getSession();
-    if (!session || session.role !== "system_admin" || session.email !== "kijjambujoseph@kyu.ac.ug") router.replace("/signin");
-    else setSession(session);
-  }, [router]);
-
-  useEffect(() => {
     getAdminDashboard().then((data) => { setAdminData(data); setUserRecords(data.users); }).catch((error) => setDataError(error instanceof Error ? error.message : "Unable to load admin data."));
   }, []);
-  const adminName = session ? `${session.firstName} ${session.lastName}` : "System Administrator";
-  const adminInitials = session ? `${session.firstName[0] || ""}${session.lastName[0] || ""}`.toUpperCase() : "SA";
-  const adminId = session?.studentId || "SYS-0001";
-  const adminEmail = session?.email || "";
+  const adminName = "System Administrator";
+  const adminInitials = "SA";
+  const adminId = "SYS-0001";
+  const adminEmail = "";
   const moderators = userRecords.filter((user) => user.role === "moderator");
   const roleLabel = (role: string) => role === "moderator" ? "Faculty Moderator" : role === "system_admin" ? "System Administrator" : "Student";
   const filteredUsers = userRecords.filter((user) => `${user.name} ${user.id} ${user.role} ${user.faculty || ""}`.toLowerCase().includes(search.toLowerCase()));

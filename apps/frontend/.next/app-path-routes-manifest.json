@@ -1,0 +1,9 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/page": "/",
+  "/admin/page": "/admin",
+  "/signin/page": "/signin",
+  "/signup/page": "/signup",
+  "/student/page": "/student",
+  "/system-admin/page": "/system-admin"
+}
