@@ -1,4 +1,4 @@
-// File: /home/deolee/Desktop/alert system/apps/frontend/app/system-admin/page.tsx
+// File: /home/deolee/Desktop/alert-system/apps/frontend/app/system-admin/page.tsx
 import * as entry from '../../../../app/system-admin/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

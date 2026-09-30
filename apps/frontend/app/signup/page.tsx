@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, ShieldCheck, UserPlus } from "lucide-react";
-import { registerAccount, setSession } from "../auth";
+import { ArrowRight, Check, Eye, EyeOff, ShieldCheck, UserPlus } from "lucide-react";
+import { registerAccount } from "../auth";
 
 export default function SignUpPage() {
   const router = useRouter();
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,11 +32,10 @@ export default function SignUpPage() {
     };
 
     try {
-      const registeredAccount = await registerAccount(account);
-      setSession(registeredAccount);
+      await registerAccount(account);
       setError("");
       setSubmitted(true);
-      window.setTimeout(() => router.push("/student"), 350);
+      window.setTimeout(() => router.push("/signin"), 700);
     } catch (registrationError) {
       if (registrationError instanceof TypeError) {
         setError("The account service is unavailable. Start the backend and try again.");
@@ -63,12 +63,12 @@ export default function SignUpPage() {
           <div className="auth-card-heading"><span className="auth-card-icon"><UserPlus size={17} /></span><span><b>New campus profile</b><small>Registration</small></span></div>
           <h2>Create your account</h2>
           <p className="auth-intro">Register with your university identity to access protected recovery records.</p>
-          {submitted && <div className="auth-success">Account created. Opening your dashboard...</div>}
+          {submitted && <div className="auth-success">Account created. Please sign in with your new credentials.</div>}
           {error && <div className="auth-error">{error}</div>}
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="auth-two-column"><label>First name<input name="firstName" required placeholder="Maya" /></label><label>Last name<input name="lastName" required placeholder="Chen" /></label></div>
             <label>University email<input name="email" type="email" required pattern="^[^\s@]+@(std\.)?kyu\.ac\.ug$" title="Use an email ending in @std.kyu.ac.ug or @kyu.ac.ug" placeholder="name@std.kyu.ac.ug / name@kyu.ac.ug" /></label>
-            <label>Password<input name="password" type="password" required minLength={8} placeholder="At least 8 characters e.g user@123" /></label>
+            <label>Password<span className="password-input-wrap"><input name="password" type={passwordVisible ? "text" : "password"} required minLength={8} placeholder="At least 8 characters e.g user@123" /><button type="button" className="password-visibility-button" onClick={() => setPasswordVisible((visible) => !visible)} aria-label={passwordVisible ? "Hide password" : "Show password"} title={passwordVisible ? "Hide password" : "Show password"}>{passwordVisible ? <EyeOff size={16} /> : <Eye size={16} />}</button></span></label>
             <label className="auth-checkbox terms"><input type="checkbox" required /> I agree to the campus privacy and property recovery terms.</label>
             <button type="submit" className="auth-submit">Create account <ArrowRight size={15} /></button>
           </form>

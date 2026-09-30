@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import { dashboardPath, loginAccount, setSession } from "../auth";
 
 export default function SignInPage() {
   const router = useRouter();
-  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [forgotOpen, setForgotOpen] = useState(false);
   const [resetSubmitted, setResetSubmitted] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -19,7 +19,6 @@ export default function SignInPage() {
     const email = String(formData.get("email") || "").trim().toLowerCase();
     const password = String(formData.get("password") || "");
     if (!/^[^\s@]+@(std\.)?kyu\.ac\.ug$/.test(email)) {
-      setSubmitted(false);
       setError("Use a valid KYU email ending in @std.kyu.ac.ug or @kyu.ac.ug.");
       return;
     }
@@ -27,15 +26,13 @@ export default function SignInPage() {
       const account = await loginAccount(email, password);
       setError("");
       setSession(account);
-      setSubmitted(true);
-      window.setTimeout(() => router.push(dashboardPath(account.role)), 350);
+      router.replace(dashboardPath(account.role));
     } catch (loginError) {
       if (loginError instanceof TypeError) {
         setError("The account service is unavailable. Start the backend and try again.");
       } else {
         setError(loginError instanceof Error ? loginError.message : "Sign-in failed.");
       }
-      setSubmitted(false);
     }
   }
 
@@ -77,11 +74,10 @@ export default function SignInPage() {
               <div className="auth-card-heading"><span className="auth-card-icon"><LockKeyhole size={17} /></span><span><b>Campus account</b><small>Secure sign in</small></span></div>
               <h2>Welcome back</h2>
               <p className="auth-intro">Use your university credentials to continue to UniAlert.</p>
-              {submitted && <div className="auth-success">Sign-in successful. Opening your dashboard...</div>}
               {error && <div className="auth-error">{error}</div>}
               <form onSubmit={handleSubmit} className="auth-form">
                 <label>University email<input name="email" type="email" required pattern="^[^\s@]+@(std\.)?kyu\.ac\.ug$" title="Use an email ending in @std.kyu.ac.ug or @kyu.ac.ug" placeholder="name@std.kyu.ac.ug / name@kyu.ac.ug" /></label>
-                <label>Password<input name="password" type="password" required minLength={8} placeholder="Enter your password" /></label>
+                <label>Password<span className="password-input-wrap"><input name="password" type={passwordVisible ? "text" : "password"} required minLength={8} placeholder="Enter your password" /><button type="button" className="password-visibility-button" onClick={() => setPasswordVisible((visible) => !visible)} aria-label={passwordVisible ? "Hide password" : "Show password"} title={passwordVisible ? "Hide password" : "Show password"}>{passwordVisible ? <EyeOff size={16} /> : <Eye size={16} />}</button></span></label>
                 <div className="auth-form-row"><label className="auth-checkbox"><input type="checkbox" /> Keep me signed in</label><button type="button" className="auth-link-button" onClick={() => setForgotOpen(true)}>Forgot password?</button></div>
                 <button type="submit" className="auth-submit">Sign in <ArrowRight size={15} /></button>
               </form>

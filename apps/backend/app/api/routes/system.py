@@ -99,13 +99,14 @@ async def ensure_admin_sections(db: AsyncSession) -> None:
 
 
 def account_view(row: object) -> dict[str, object]:
+    created_at = row["created_at"]
     return {
         "initials": f"{row['first_name'][0]}{row['last_name'][0]}".upper(),
         "name": f"{row['first_name']} {row['last_name']}",
         "id": row["student_id"],
         "role": row["role"],
         "status": "Active",
-        "lastSeen": row["created_at"].isoformat() if row["created_at"] else "Registered",
+        "lastSeen": created_at.isoformat() if hasattr(created_at, "isoformat") else created_at or "Registered",
         "faculty": row["faculty"],
         "email": row["email"],
     }

@@ -205,7 +205,7 @@ export default function SystemAdminPage() {
 
   useEffect(() => {
     const session = getSession();
-    if (!session || session.role !== "system_admin" || session.email !== "kijjambujoseph@kyu.ac.ug") router.replace("/signin");
+    if (!session || session.role !== "system_admin") router.replace("/signin");
     else setSession(session);
   }, [router]);
 

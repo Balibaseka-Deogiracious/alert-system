@@ -35,6 +35,42 @@ button { cursor: pointer; }
   background: var(--page);
 }
 
+.back-to-top-button {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 50%;
+  background: var(--navy);
+  color: white;
+  box-shadow: 0 5px 18px rgba(13, 27, 42, .25);
+  transition: background-color .18s ease, transform .18s ease;
+}
+
+.back-to-top-button:hover {
+  background: var(--secondary);
+  transform: translateY(-2px);
+}
+
+.back-to-top-button:focus-visible {
+  outline: 3px solid var(--secondary);
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .back-to-top-button {
+    right: 16px;
+    bottom: 16px;
+    width: 44px;
+    height: 44px;
+  }
+}
+
 .top-banner {
   background: #f7e7e7;
   border-bottom: 1px solid #e8d6d6;
@@ -3632,6 +3668,11 @@ html[data-theme="dark"] .portal-shell .hub-card button {
 .auth-form label:not(.auth-checkbox) { display: flex; flex-direction: column; gap: 7px; color: #2c4865; font-size: 10px; font-weight: 800; }
 .auth-form input, .auth-form select { width: 100%; border: 1px solid #d7e3f1; border-radius: 8px; outline: none; background: #f8faff; color: #1e3853; padding: 11px 12px; font-size: 12px; }
 .auth-form input:focus, .auth-form select:focus { border-color: #5f9ac5; box-shadow: 0 0 0 3px rgba(95,154,197,.13); }
+.password-input-wrap { position: relative; display: block; }
+.password-input-wrap input { padding-right: 42px; }
+.password-visibility-button { position: absolute; top: 50%; right: 8px; display: grid; place-items: center; width: 28px; height: 28px; transform: translateY(-50%); border: 0; background: transparent; color: #6b83a0; cursor: pointer; }
+.password-visibility-button:hover { color: #28649a; }
+.password-visibility-button:focus-visible { border-radius: 5px; outline: 2px solid #5f9ac5; outline-offset: 1px; }
 .auth-two-column { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .auth-form-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .auth-checkbox { display: flex; align-items: center; gap: 6px; color: #667d94; font-size: 10px; font-weight: 500; line-height: 1.4; }

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowUp } from "lucide-react";
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "./theme-provider";
@@ -72,6 +73,7 @@ export default function HomePage() {
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [reportForm, setReportForm] = useState({ title: "", location: "", category: "", description: "" });
   const [reportImage, setReportImage] = useState("");
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
     const session = getSession();
@@ -101,6 +103,13 @@ export default function HomePage() {
   useEffect(() => {
     const storedItems = window.localStorage.getItem(FOUND_ITEMS_STORAGE_KEY);
     if (storedItems) setSubmittedItems(JSON.parse(storedItems) as SubmittedFoundItem[]);
+  }, []);
+
+  useEffect(() => {
+    const updateScrollButton = () => setShowScrollTop(window.scrollY > 400);
+    window.addEventListener("scroll", updateScrollButton, { passive: true });
+    updateScrollButton();
+    return () => window.removeEventListener("scroll", updateScrollButton);
   }, []);
 
   return (
@@ -480,6 +489,18 @@ export default function HomePage() {
           <p>Compliant with Higher Education Cler Act and FERPA data security standards for personal student effects.</p>
         </div>
       </footer>
+
+      {showScrollTop && (
+        <button
+          type="button"
+          className="back-to-top-button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="Back to top"
+          title="Back to top"
+        >
+          <ArrowUp size={20} aria-hidden="true" />
+        </button>
+      )}
     </div>
   );
 }
