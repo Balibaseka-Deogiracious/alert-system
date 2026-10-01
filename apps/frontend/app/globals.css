@@ -2840,17 +2840,6 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
   line-height: 1.4;
 }
 
-.metric-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-  background: #edf4ff;
-  color: #1d4f7a;
-}
-
 .feature-metric strong {
   display: block;
   margin: 0;
@@ -2960,6 +2949,38 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
   gap: 7px;
 }
 
+.export-button-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.export-button {
+  min-width: 56px;
+  justify-content: center;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--primary);
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 16px rgba(11, 47, 82, 0.12);
+}
+
+.export-button:hover,
+.export-button:focus-visible {
+  background: #0a2945;
+  color: white;
+  outline: none;
+}
+
+.primary-button {
+  border-color: var(--primary);
+}
+
 .table-actions-label {
   color: #516d88;
   font-size: 11px;
@@ -2968,28 +2989,31 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
   text-transform: uppercase;
 }
 
-.export-format {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 7px 9px;
-  border: 1px solid #dce7f4;
-  border-radius: 7px;
-  color: #526b85;
-  font-size: 9px;
-  font-weight: 700;
-}
-
-.export-format select {
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: #18334f;
-  font: inherit;
-}
-
 .feature-records {
   border-top: 1px solid #edf2f8;
+}
+
+.registry-table-header {
+  display: grid;
+  grid-template-columns: 34px 1.3fr 1.5fr 1.2fr 0.7fr 92px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #edf2f8;
+  background: #f4f8ff;
+  color: #617991;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lost-report-table-header {
+  grid-template-columns: 34px 1.3fr 1.5fr 0.8fr 92px;
+}
+
+.found-items-table-header {
+  grid-template-columns: 34px 1.1fr 1.5fr 1.1fr 1.1fr 92px;
 }
 
 .feature-record {
@@ -3004,9 +3028,75 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
   font-weight: 700;
 }
 
+.student-registry-records .feature-record {
+  grid-template-columns: 34px minmax(0, 1.6fr) 92px;
+}
+
+.registry-user-fields {
+  display: grid;
+  grid-template-columns: 1.3fr 1.5fr 1.2fr 0.7fr;
+  gap: 12px;
+  min-width: 0;
+  align-items: center;
+}
+
+.lost-report-fields {
+  grid-template-columns: 1.2fr 1.8fr 0.8fr;
+}
+
+.found-items-fields {
+  grid-template-columns: 1.1fr 1.5fr 1.1fr 1.1fr;
+}
+
+.claim-approvals-table-header {
+  grid-template-columns: 34px 1.2fr 1.5fr 1.8fr 1.2fr 150px;
+}
+
+.claim-approval-record {
+  grid-template-columns: 34px minmax(0, 1fr) 150px;
+}
+
+.claim-approval-fields {
+  display: grid;
+  grid-template-columns: 1.2fr 1.5fr 1.8fr 1.2fr;
+  gap: 12px;
+  min-width: 0;
+  align-items: center;
+}
+
+.registry-detail-column {
+  min-width: 0;
+}
+
+.registry-detail-column strong {
+  display: block;
+  color: #153454;
+  font-size: 10px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.registry-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #dff7ee;
+  color: #1c8b74;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .registry-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
+  align-items: center;
   gap: 5px;
 }
 
@@ -3022,6 +3112,29 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
   cursor: pointer;
 }
 
+.table-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--primary);
+  border-radius: 7px;
+  background: var(--primary);
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.table-action-button-secondary {
+  border-color: #dce7f4;
+  background: #f5f8fd;
+  color: #315e8a;
+}
+
 .registry-actions button:hover,
 .registry-actions button:focus-visible {
   background: #315e8a;
@@ -3031,24 +3144,37 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
 
 .claim-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 5px;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
 }
 
 .claim-actions button {
-  padding: 5px 7px;
-  border: 0;
-  border-radius: 5px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   color: white;
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
+  box-shadow: 0 8px 18px rgba(18, 59, 89, 0.12);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 
-.approve-button { background: #197b68; }
-.deny-button { background: #ba1a1a; }
-.approve-button:hover, .approve-button:focus-visible { background: #105a4d; }
-.deny-button:hover, .deny-button:focus-visible { background: #8e1111; }
+.claim-actions button:hover,
+.claim-actions button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(18, 59, 89, 0.18);
+  filter: brightness(1.02);
+  outline: none;
+}
+
+.approve-button { background: linear-gradient(180deg, #1f8f74 0%, #186f5f 100%); border-color: #1a7969; }
+.deny-button { background: linear-gradient(180deg, #d45353 0%, #b43939 100%); border-color: #a42f2f; }
+.approve-button:hover, .approve-button:focus-visible { background: linear-gradient(180deg, #1a7e68 0%, #135d50 100%); }
+.deny-button:hover, .deny-button:focus-visible { background: linear-gradient(180deg, #c64a4a 0%, #9d2f2f 100%); }
 
 .claim-decision {
   padding: 5px 7px;
