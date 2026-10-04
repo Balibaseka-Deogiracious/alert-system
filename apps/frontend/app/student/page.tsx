@@ -1,9 +1,8 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ProfileDropdown, ThemeToggle } from "../theme-provider";
-import { dashboardPath, getSession, Session, submitClaim } from "../auth";
+import { submitClaim } from "../auth";
 
 const FOUND_ITEMS_STORAGE_KEY = "unialert-found-items";
 
@@ -77,25 +76,16 @@ const recoveryStations = [
 ];
 
 export default function StudentDashboardPage() {
-  const router = useRouter();
-  const [session, setSession] = useState<Session | null>(null);
   const [activeSection, setActiveSection] = useState("Student Dashboard");
   const [reportOpen, setReportOpen] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [report, setReport] = useState({ title: "", location: "", category: "", description: "", image: "" });
   const [claimSubmitted, setClaimSubmitted] = useState("");
 
-  useEffect(() => {
-    const session = getSession();
-    if (!session) router.replace("/signin");
-    else if (session.role !== "student") router.replace(dashboardPath(session.role));
-    else setSession(session);
-  }, [router]);
-
-  const displayName = session ? `${session.firstName} ${session.lastName}` : "Student";
-  const initials = session ? `${session.firstName[0] || ""}${session.lastName[0] || ""}`.toUpperCase() : "ST";
-  const studentId = session?.studentId || "Student account";
-  const faculty = session?.faculty || "Faculty not provided";
+  const displayName = "Student User";
+  const initials = "SU";
+  const studentId = "Student account";
+  const faculty = "Faculty not provided";
 
   function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -125,9 +115,8 @@ export default function StudentDashboardPage() {
   }
 
   async function handleClaim(itemName: string, location: string) {
-    if (!session) return;
     try {
-      await submitClaim({ studentId: session.studentId || session.email, studentName: displayName, itemName, location });
+      await submitClaim({ studentId: "STU-000000", studentName: displayName, itemName, location });
       setClaimSubmitted(itemName);
       window.setTimeout(() => setClaimSubmitted(""), 2500);
     } catch (error) {
@@ -184,7 +173,7 @@ export default function StudentDashboardPage() {
               <input placeholder="Search case ID, items..." />
             </label>
             <ThemeToggle />
-            <ProfileDropdown name={displayName} initials={initials} role="Student" summary="Student property and safety dashboard" email={session?.email || ""} />
+            <ProfileDropdown name={displayName} initials={initials} role="Student" summary="Student property and safety dashboard" email="" />
           </div>
         </header>
 
@@ -218,7 +207,7 @@ export default function StudentDashboardPage() {
               <div className="welcome-copy">
                 <h1>Welcome back, {displayName}</h1>
                 <p>
-                  <span className="tiny-id">ID:</span> {studentId} • {faculty} • {session?.email || "University email pending"}
+                  <span className="tiny-id">ID:</span> {studentId} • {faculty} • University email pending
                 </p>
               </div>
 
