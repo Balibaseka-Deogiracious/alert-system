@@ -76,6 +76,48 @@ SECTION_DEFAULTS = {
     "System Settings": ("Platform control plane", "System Settings", "Configure global identity, notifications, retention, integrations, and operational safeguards for UniAlert.", [["12", "active policies", "All compliant"], ["7 years", "retention window", "Legal hold ready"], ["99.98%", "API uptime", "Last check 2 min ago"]], [["Identity & authentication", "SSO and MFA policy", "Healthy • Database configuration"], ["Notifications & broadcasts", "Push, email, and hall display channels", "Operational"], ["Data retention & exports", "Encrypted audit exports", "Compliant"]]),
 }
 
+STUDENT_DASHBOARD_DEFAULTS = {
+    "matches": [
+        {"name": "Midnight Blue Leather Backpack", "location": "ICT Lab 302", "caseId": "LR-2025-0941", "status": "Possible Match", "tone": "warning", "small": "94% feature match", "icon": "◈"},
+        {"name": "Apple AirPods Pro 2nd Gen", "location": "Red Science Lab", "caseId": "LR-2025-0812", "status": "Searching", "tone": "muted", "small": "Waiting on review", "icon": "◉"},
+        {"name": "Ti-Nspire CX II Calculator", "location": "Math Annex", "caseId": "LR-2025-0684", "status": "Collected", "tone": "success", "small": "Recovered at desk", "icon": "◌"},
+        {"name": "Olive Green 32oz Insulated Flask", "location": "Student Union", "caseId": "LR-2025-0118", "status": "Pending Review", "tone": "info", "small": "Awaiting confirmation", "icon": "◐"},
+    ],
+    "campusFound": [
+        {"title": "Keychron K2 Mech...", "place": "Science Station Desk", "status": "Found", "time": "2h ago", "tone": "keyboard", "action": "Claim Item"},
+        {"title": "Sony WH-1000XM...", "place": "Central Dispatch", "status": "Found", "time": "4h ago", "tone": "headphones", "action": "Claim Item"},
+        {"title": "University ID + Met...", "place": "Student Union Info Desk", "status": "Found", "time": "6h ago", "tone": "id", "action": "Claim Item"},
+        {"title": "Ray-Ban Prescription...", "place": "Main Library Desk", "status": "Found", "time": "7h ago", "tone": "glasses", "action": "Claim Item"},
+    ],
+    "bulletinItems": [
+        {"type": "Security Priority", "title": "Theft Prevention Alert: West Gym", "time": "22m ago", "color": "red", "text": "Multiple locker breaches reported between 14:00-16:00. Ensure heavy-duty combo locks are engaged."},
+        {"type": "Facility Advisory", "title": "Science Tower Power Grid Maintenance", "time": "2h ago", "color": "blue", "text": "Floors 4-7 power shutdown scheduled today 18:00-22:00. Computer labs offline."},
+        {"type": "Operational Notice", "title": "Library North Wing Extended Hours", "time": "5h ago", "color": "teal", "text": "Midterm review week: central recovery drop-box extended through Friday evening."},
+    ],
+    "recoveryStations": [
+        {"title": "Central Police Dispatch", "time": "Open now", "status": "Campus Safety"},
+        {"title": "Main Library Circulation", "time": "Closed 23:00", "status": "Campus Study"},
+        {"title": "Student Union Information", "time": "Closed 19:00", "status": "Campus Info"},
+    ],
+}
+
+
+async def ensure_student_dashboard(db: AsyncSession) -> None:
+    await db.execute(text("""
+        CREATE TABLE IF NOT EXISTS dashboard_content (
+            content_key VARCHAR(80) PRIMARY KEY,
+            content JSON NOT NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """))
+    for key, content in STUDENT_DASHBOARD_DEFAULTS.items():
+        await db.execute(text("""
+            INSERT INTO dashboard_content (content_key, content)
+            VALUES (:content_key, :content)
+            ON CONFLICT (content_key) DO NOTHING
+        """), {"content_key": key, "content": json.dumps(content)})
+    await db.commit()
+
 
 async def ensure_admin_sections(db: AsyncSession) -> None:
     await db.execute(text("""
@@ -154,7 +196,7 @@ async def admin_dashboard(db: AsyncSession = Depends(get_db_session)) -> dict[st
         faculty = user["faculty"] or "Unassigned"
         departments[faculty] = departments.get(faculty, 0) + 1
     sections_result = await db.execute(text("SELECT section_key, eyebrow, title, description, metrics, records FROM admin_sections ORDER BY section_key"))
-    sections = {row["section_key"]: {"eyebrow": row["eyebrow"], "title": row["title"], "description": row["description"], "metrics": row["metrics"], "records": row["records"]} for row in sections_result.mappings().all()}
+    sections = {row["section_key"]: {"eyebrow": row["eyebrow"], "title": row["title"], "description": row["description"], "metrics": json.loads(row["metrics"]), "records": json.loads(row["records"])} for row in sections_result.mappings().all()}
     sections["Users & Access"] = {"eyebrow": "Identity directory", "title": "Users & Access", "description": "Govern student, staff, and privileged access across every campus operation.", "metrics": [[str(len(users)), "directory users", "Live database total"], [str(sum(user["role"] != "student" for user in users)), "privileged accounts", "Managed by admin"], ["0", "access events / 24h", "Database total"]], "records": [[user["name"], f"{user['id']} • {user['role']}" + (f" • {user['faculty']}" if user["faculty"] else ""), f"{user['status']} • {user['lastSeen']}"] for user in users]}
     sections["Moderator Team"] = {"eyebrow": "Operational staffing", "title": "Moderator Team", "description": "Monitor moderator coverage, escalation ownership, and platform privileges for live operations.", "metrics": [[str(len(moderators)), "moderators on duty", "Live database total"], [str(sum(bool(user["faculty"]) for user in moderators)), "assigned faculties", "Database total"], ["0", "reviews due", "Database records"]], "records": [[user["name"], f"{user['id']} • {user['faculty'] or 'Faculty not assigned'}", f"{user['status']} • {user['lastSeen']}"] for user in moderators]}
     sections["Faculties & Departments"]["metrics"] = [[str(len(departments)), "departments", "Live database total"], [str(len(departments)), "department groups", "Database records"], [str(len(users)), "assigned users", "Live database total"]]
@@ -293,6 +335,13 @@ async def get_lost_report_details(db: AsyncSession, report_id: str) -> dict[str,
 @router.get("/status")
 async def system_status() -> dict[str, str]:
     return {"status": "operational", "environment": "development"}
+
+
+@router.get("/student-dashboard")
+async def student_dashboard(db: AsyncSession = Depends(get_db_session)) -> dict[str, object]:
+    await ensure_student_dashboard(db)
+    result = await db.execute(text("SELECT content_key, content FROM dashboard_content"))
+    return {row["content_key"]: json.loads(row["content"]) for row in result.mappings().all()}
 
 
 @router.get("/admin-notifications")
