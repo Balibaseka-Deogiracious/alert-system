@@ -4,3 +4,11 @@ dist/
 build/
 .env
 *.db
+# Next.js build output
+.next/
+out/
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
