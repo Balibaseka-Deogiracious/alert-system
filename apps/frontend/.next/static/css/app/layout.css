@@ -2622,6 +2622,7 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
 .admin-shell .icon-button { position: relative; width: 28px; height: 28px; padding: 0; border: 0; background: transparent; color: #526b85; }
 .admin-shell .icon-button i { position: absolute; top: -4px; right: -4px; width: 14px; height: 14px; border-radius: 50%; background: #ba1a1a; color: white; font-size: 9px; font-style: normal; line-height: 14px; }
 .admin-shell .beacon-button, .admin-shell .danger-button { gap: 6px; border: 0; border-radius: 7px; background: #ba1a1a; color: white; padding: 8px 12px; font-size: 11px; font-weight: 800; box-shadow: 0 5px 12px rgba(186, 26, 26, 0.15); }
+.admin-shell .success-button { gap: 6px; border: 0; border-radius: 7px; background: #1d9d5f; color: white; padding: 8px 12px; font-size: 11px; font-weight: 800; box-shadow: 0 5px 12px rgba(29, 157, 95, 0.18); }
 .admin-shell .user-avatar, .admin-shell .avatar-large { display: grid; place-items: center; border-radius: 50%; background: linear-gradient(135deg, #dcecff, #8cb8ef); color: #183b60; font-size: 10px; font-weight: 800; }
 .admin-shell .user-avatar { width: 25px; height: 25px; }
 .admin-shell .user-name { font-size: 11px; color: #1b334c; }
@@ -2760,7 +2761,7 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
 .admin-shell .queue-tools button svg { display: none; }
 .admin-shell .queue-tools button::before { content: "↻"; font-size: 17px; line-height: 1; }
 .admin-shell .claim-table { border-top: 1px solid #e7eef8; }
-.admin-shell .claim-table .table-head, .admin-shell .claim-row { display: grid; grid-template-columns: 1fr 1.4fr 1.8fr 88px; grid-gap: 12px; gap: 12px; align-items: center; padding: 10px 15px; }
+.admin-shell .claim-table .table-head, .admin-shell .claim-row { display: grid; grid-template-columns: 1fr 1.4fr 1.8fr 1fr 88px; grid-gap: 12px; gap: 12px; align-items: center; padding: 10px 15px; }
 .admin-shell .claim-table .table-head { background: #f3f7ff; color: #617991; font-size: 8px; letter-spacing: .08em; }
 .admin-shell .claim-row { min-height: 60px; border-top: 1px solid #edf2f9; }
 .admin-shell #quick-broadcast-box { display: none; }
@@ -2771,10 +2772,11 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
 .admin-shell .risk-dot.coral { background: #f2b1ab; }
 .admin-shell .initials { display: grid; place-items: center; flex: 0 0 20px; width: 20px; height: 20px; border-radius: 50%; background: #d9eaff; color: #1c5e9a; font-size: 8px; font-weight: 800; }
 .admin-shell .initials.teal { background: #c8f0e8; color: #197d74; }
-.admin-shell .student, .admin-shell .item-summary { gap: 7px; min-width: 0; }
+.admin-shell .student, .admin-shell .item-summary, .admin-shell .claim-category { gap: 7px; min-width: 0; }
 .admin-shell .student > span:last-child, .admin-shell .item-summary > span:last-child { min-width: 0; }
-.admin-shell .student b, .admin-shell .item-summary b { display: block; overflow: hidden; color: #19334f; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.admin-shell .student b, .admin-shell .item-summary b, .admin-shell .claim-category strong { display: block; overflow: hidden; color: #19334f; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .admin-shell .item-thumb { display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 24px; border-radius: 3px; background: #dae7f5; color: #54718d; }
+.admin-shell .claim-category { display: flex; align-items: center; }
 .admin-shell .claim-row-actions { display: flex; justify-content: flex-end; gap: 6px; }
 .admin-shell .claim-row-action { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid #d9e5f3; border-radius: 6px; background: white; color: #57718d; cursor: pointer; }
 .admin-shell .claim-row-action:hover, .admin-shell .claim-row-action:focus-visible { border-color: #bed4ec; background: #f3f8ff; color: #1a3d5f; outline: none; }
@@ -2823,6 +2825,19 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
   gap: 18px;
 }
 
+.feature-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.stacked-export-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .feature-view-header h2 {
   margin: 8px 0 5px;
   color: #07192d;
@@ -2859,11 +2874,32 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
 .metric-label-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 7px;
   color: #647b94;
   font-size: 9px;
   font-weight: 700;
   line-height: 1.4;
+}
+
+.metric-label-row > span {
+  flex: 1 1;
+}
+
+.metric-card-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: #4a6c96;
+  opacity: 0.9;
+}
+
+.metric-card-icon.success {
+  color: #1d9d5f;
+}
+
+.metric-card-icon.danger {
+  color: #db5f4d;
 }
 
 .feature-metric strong {
@@ -3203,8 +3239,8 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
   outline: none;
 }
 
-.approve-button { background: linear-gradient(180deg, #1f8f74 0%, #186f5f 100%); border-color: #1a7969; }
-.deny-button { background: linear-gradient(180deg, #d45353 0%, #b43939 100%); border-color: #a42f2f; }
+.approve-button { background: linear-gradient(180deg, #1a7e68 0%, #135d50 100%); border-color: #0f4f42; }
+.deny-button { background: linear-gradient(180deg, #c64a4a 0%, #9d2f2f 100%); border-color: #7e1d1d; }
 .approve-button:hover, .approve-button:focus-visible { background: linear-gradient(180deg, #1a7e68 0%, #135d50 100%); }
 .deny-button:hover, .deny-button:focus-visible { background: linear-gradient(180deg, #c64a4a 0%, #9d2f2f 100%); }
 
