@@ -1,10 +1,12 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ProfileDropdown, ThemeToggle } from "../theme-provider";
-import { submitClaim } from "../auth";
+import { API_URL, getSession, submitClaim } from "../auth";
 
 const FOUND_ITEMS_STORAGE_KEY = "unialert-found-items";
+const LOST_ITEMS_STORAGE_KEY = "unialert-lost-items";
 
 type FoundItem = {
   id: string;
@@ -75,17 +77,42 @@ const recoveryStations = [
   { title: "Student Union Information", time: "Closed 19:00", status: "Campus Info" },
 ];
 
+type StudentDashboardData = {
+  matches: typeof matches;
+  campusFound: typeof campusFound;
+  bulletinItems: typeof bulletinItems;
+  recoveryStations: typeof recoveryStations;
+};
+
 export default function StudentDashboardPage() {
+  const router = useRouter();
   const [activeSection, setActiveSection] = useState("Student Dashboard");
   const [reportOpen, setReportOpen] = useState(false);
+  const [reportType, setReportType] = useState<"found" | "lost">("found");
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [report, setReport] = useState({ title: "", location: "", category: "", description: "", image: "" });
   const [claimSubmitted, setClaimSubmitted] = useState("");
+  const [session, setCurrentSession] = useState<ReturnType<typeof getSession>>(null);
+  const [dashboardData, setDashboardData] = useState<StudentDashboardData>({ matches, campusFound, bulletinItems, recoveryStations });
 
-  const displayName = "Student User";
-  const initials = "SU";
-  const studentId = "Student account";
-  const faculty = "Faculty not provided";
+  useEffect(() => {
+    const currentSession = getSession();
+    if (!currentSession || currentSession.role !== "student") router.replace("/signin");
+    else setCurrentSession(currentSession);
+  }, [router]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/system/student-dashboard`, { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Unable to load dashboard data")))
+      .then((data: StudentDashboardData) => setDashboardData(data))
+      .catch((error) => console.error("Failed to load student dashboard data", error));
+  }, []);
+
+  const displayName = session ? `${session.firstName} ${session.lastName}`.trim() : "Student User";
+  const initials = session ? `${session.firstName.charAt(0)}${session.lastName.charAt(0)}`.toUpperCase() : "SU";
+  const studentId = session?.studentId || "Student account";
+  const faculty = session?.faculty || "Faculty not provided";
+  const email = session?.email || "";
 
   function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -104,8 +131,14 @@ export default function StudentDashboardPage() {
       submittedBy: displayName,
       submittedAt: new Date().toISOString(),
     };
-    const savedItems = JSON.parse(localStorage.getItem(FOUND_ITEMS_STORAGE_KEY) || "[]") as FoundItem[];
-    localStorage.setItem(FOUND_ITEMS_STORAGE_KEY, JSON.stringify([newItem, ...savedItems]));
+    if (reportType === "found") {
+      const savedItems = JSON.parse(localStorage.getItem(FOUND_ITEMS_STORAGE_KEY) || "[]") as FoundItem[];
+      localStorage.setItem(FOUND_ITEMS_STORAGE_KEY, JSON.stringify([newItem, ...savedItems]));
+    } else {
+      const lostReport = { ...newItem, id: `LOST-${Date.now().toString().slice(-6)}`, reportType: "lost" };
+      const savedReports = JSON.parse(localStorage.getItem(LOST_ITEMS_STORAGE_KEY) || "[]") as FoundItem[];
+      localStorage.setItem(LOST_ITEMS_STORAGE_KEY, JSON.stringify([lostReport, ...savedReports]));
+    }
     setReport({ title: "", location: "", category: "", description: "", image: "" });
     setReportSubmitted(true);
     setTimeout(() => {
@@ -116,7 +149,7 @@ export default function StudentDashboardPage() {
 
   async function handleClaim(itemName: string, location: string) {
     try {
-      await submitClaim({ studentId: "STU-000000", studentName: displayName, itemName, location });
+      await submitClaim({ studentId, studentName: displayName, itemName, location });
       setClaimSubmitted(itemName);
       window.setTimeout(() => setClaimSubmitted(""), 2500);
     } catch (error) {
@@ -173,14 +206,14 @@ export default function StudentDashboardPage() {
               <input placeholder="Search case ID, items..." />
             </label>
             <ThemeToggle />
-            <ProfileDropdown name={displayName} initials={initials} role="Student" summary="Student property and safety dashboard" email="" />
+            <ProfileDropdown name={displayName} initials={initials} role="Student" summary="Student property and safety dashboard" email={email} />
           </div>
         </header>
 
         <div className="content-area">
           {activeSection !== "Student Dashboard" && <section className="student-subview">
-            <div className="subview-heading"><div><span className="eyebrow">{activeSection === "Find an Item" ? "Property recovery" : "Campus communications"}</span><h1>{activeSection}</h1><p>{activeSection === "Find an Item" ? "Search recently recovered property and review possible matches across campus stations." : "Stay informed about safety, facility, and operational notices across campus."}</p></div>{activeSection === "Find an Item" && <button className="soft-accent active" onClick={() => setReportOpen(true)}>Report Found Item</button>}</div>
-            {activeSection === "Find an Item" ? <div className="student-subview-grid"><section className="panel search-results-panel"><div className="panel-header"><div><span className="eyebrow">Recovered property</span><h2>Available items</h2></div><div className="header-sort"><span>Latest first</span></div></div>{campusFound.map((item) => <article className="search-result" key={item.title}><div className={`thumb ${item.tone}`}><span>{item.title.charAt(0)}</span></div><div><span className="found-status">{item.status}</span><h3>{item.title}</h3><small>{item.place} • {item.time}</small></div><button className="claim-button">{item.action}</button></article>)}</section><section className="panel search-results-panel"><div className="panel-header"><div><span className="eyebrow">Possible matches</span><h2>Reports to review</h2></div></div>{matches.map((item) => <article className="match-result" key={item.caseId}><div><strong>{item.name}</strong><small>{item.location} • {item.caseId}</small></div><span className={`tag ${item.tone}`}>{item.status}</span></article>)}</section></div> : <section className="panel alerts-directory"><div className="panel-header"><div><span className="eyebrow">Live bulletins</span><h2>Campus alerts</h2></div><span className="status-pill success">{bulletinItems.length} active</span></div>{bulletinItems.map((item) => <article key={item.title} className={`bulletin-card ${item.color}`}><div className="bulletin-head"><span>{item.type}</span><time>{item.time}</time></div><h3>{item.title}</h3><p>{item.text}</p></article>)}</section>}
+            <div className="subview-heading"><div><span className="eyebrow">{activeSection === "Find an Item" ? "Property recovery" : "Campus communications"}</span><h1>{activeSection}</h1><p>{activeSection === "Find an Item" ? "Search recently recovered property and review possible matches across campus stations." : "Stay informed about safety, facility, and operational notices across campus."}</p></div>{activeSection === "Find an Item" && <button className="soft-accent active" onClick={() => { setReportType("found"); setReportOpen(true); }}>Report Found Item</button>}</div>
+            {activeSection === "Find an Item" ? <div className="student-subview-grid"><section className="panel search-results-panel"><div className="panel-header"><div><span className="eyebrow">Recovered property</span><h2>Available items</h2></div><div className="header-sort"><span>Latest first</span></div></div>{dashboardData.campusFound.map((item) => <article className="search-result" key={item.title}><div className={`thumb ${item.tone}`}><span>{item.title.charAt(0)}</span></div><div><span className="found-status">{item.status}</span><h3>{item.title}</h3><small>{item.place} • {item.time}</small></div><button className="claim-button">{item.action}</button></article>)}</section><section className="panel search-results-panel"><div className="panel-header"><div><span className="eyebrow">Possible matches</span><h2>Reports to review</h2></div></div>{dashboardData.matches.map((item) => <article className="match-result" key={item.caseId}><div><strong>{item.name}</strong><small>{item.location} • {item.caseId}</small></div><span className={`tag ${item.tone}`}>{item.status}</span></article>)}</section></div> : <section className="panel alerts-directory"><div className="panel-header"><div><span className="eyebrow">Live bulletins</span><h2>Campus alerts</h2></div><span className="status-pill success">{dashboardData.bulletinItems.length} active</span></div>{dashboardData.bulletinItems.map((item) => <article key={item.title} className={`bulletin-card ${item.color}`}><div className="bulletin-head"><span>{item.type}</span><time>{item.time}</time></div><h3>{item.title}</h3><p>{item.text}</p></article>)}</section>}
           </section>}
           <div className={activeSection === "Student Dashboard" ? "dashboard-home" : "dashboard-home hidden-home"}>
           <section className="match-alert">
@@ -212,8 +245,8 @@ export default function StudentDashboardPage() {
               </div>
 
               <div className="welcome-actions">
-                <button className="soft-accent">Report Lost Item</button>
-                <button className="soft-accent active" onClick={() => setReportOpen(true)}>Report Found Item</button>
+                <button className="soft-accent" onClick={() => { setReportType("lost"); setReportOpen(true); }}>Report Lost Item</button>
+                <button className="soft-accent active" onClick={() => { setReportType("found"); setReportOpen(true); }}>Report Found Item</button>
                 <button className="ghost-accent">Search Database</button>
               </div>
             </div>
@@ -370,7 +403,7 @@ export default function StudentDashboardPage() {
               </div>
 
               <div className="station-list">
-                {recoveryStations.map((station) => (
+                {dashboardData.recoveryStations.map((station) => (
                   <div key={station.title} className="station-item">
                     <div className="station-dot" />
                     <div className="station-copy">
@@ -404,55 +437,60 @@ export default function StudentDashboardPage() {
       {reportOpen && (
         <div className="student-modal-backdrop">
           <section className="found-report-modal" role="dialog" aria-modal="true" aria-labelledby="found-report-title">
-            <button className="found-report-close" onClick={() => setReportOpen(false)} aria-label="Close found item form">×</button>
+            <button className="found-report-close" onClick={() => setReportOpen(false)} aria-label={`Close ${reportType} item form`}>×</button>
             <div className="found-report-kicker">Student property intake</div>
-            <h2 id="found-report-title">Report a found item</h2>
-            <p>Provide enough detail for campus staff to verify, secure, and return the item safely.</p>
+            <h2 id="found-report-title">Report a {reportType} item</h2>
+            <p>{reportType === "lost" ? "Record the item details and last known location so campus staff can match it against recovered property." : "Provide enough detail for campus staff to verify, secure, and return the item safely."}</p>
             <form onSubmit={handleReportSubmit}>
               <div className="found-form-grid">
                 <label>
                   Item name
-                  <input required value={report.title} onChange={(event) => setReport({ ...report, title: event.target.value })} placeholder="e.g. Black wireless headphones" />
+                  <input required value={report.title} onChange={(event) => setReport({ ...report, title: event.target.value })} placeholder={reportType === "lost" ? "e.g. Midnight blue backpack" : "e.g. Black wireless headphones"} />
                 </label>
-                <label>
-                  Found location
-                  <select required value={report.location} onChange={(event) => setReport({ ...report, location: event.target.value })}>
-                    <option value="">Select campus location</option>
-                    <option>Main Library Commons</option>
-                    <option>ICT Engineering Hallway</option>
-                    <option>Student Union Plaza</option>
-                    <option>Science Quadrangle</option>
-                    <option>Recreation Center</option>
-                    <option>Other campus location</option>
-                  </select>
-                </label>
-                <label>
-                  Category
-                  <select required value={report.category} onChange={(event) => setReport({ ...report, category: event.target.value })}>
-                    <option value="">Select category</option>
-                    <option>Electronics</option>
-                    <option>Keys &amp; access cards</option>
-                    <option>Books &amp; math</option>
-                    <option>Clothing &amp; accessories</option>
-                    <option>Other</option>
-                  </select>
-                </label>
-                <label className="found-upload-label">
-                  Item photo
-                  <input type="file" accept="image/*" onChange={handleImageChange} />
-                  <span>{report.image ? "Photo attached" : "Choose a photo from this device"}</span>
-                </label>
+                {reportType === "lost" ? <label>
+                  Last known location
+                  <input required value={report.location} onChange={(event) => setReport({ ...report, location: event.target.value })} placeholder="e.g. West Gym" />
+                </label> : <>
+                  <label>
+                    Found location
+                    <select required value={report.location} onChange={(event) => setReport({ ...report, location: event.target.value })}>
+                      <option value="">Select campus location</option>
+                      <option>Main Library Commons</option>
+                      <option>ICT Engineering Hallway</option>
+                      <option>Student Union Plaza</option>
+                      <option>Science Quadrangle</option>
+                      <option>Recreation Center</option>
+                      <option>Other campus location</option>
+                    </select>
+                  </label>
+                  <label>
+                    Category
+                    <select required value={report.category} onChange={(event) => setReport({ ...report, category: event.target.value })}>
+                      <option value="">Select category</option>
+                      <option>Electronics</option>
+                      <option>Keys &amp; access cards</option>
+                      <option>Books &amp; math</option>
+                      <option>Clothing &amp; accessories</option>
+                      <option>Other</option>
+                    </select>
+                  </label>
+                  <label className="found-upload-label">
+                    Item photo
+                    <input type="file" accept="image/*" onChange={handleImageChange} />
+                    <span>{report.image ? "Photo attached" : "Choose a photo from this device"}</span>
+                  </label>
+                </>}
               </div>
               {report.image && <img className="found-image-preview" src={report.image} alt="Preview of found item" />}
               <label className="found-description-label">
-                Description and distinguishing details
-                <textarea required value={report.description} onChange={(event) => setReport({ ...report, description: event.target.value })} placeholder="Describe color, markings, where it was found, and any safe identifying details." />
+                {reportType === "lost" ? "Description" : "Description and distinguishing details"}
+                <textarea required value={report.description} onChange={(event) => setReport({ ...report, description: event.target.value })} placeholder={reportType === "lost" ? "Add identifying details" : "Describe color, markings, where it was found, and any safe identifying details."} />
               </label>
               <div className="found-form-footer">
-                <span>Submitted reports are uploaded directly to the property records.</span>
+                <span>{reportType === "lost" ? "Your report will be matched against recovered property records." : "Submitted reports are uploaded directly to the property records."}</span>
                 <div>
                   <button type="button" className="found-cancel" onClick={() => setReportOpen(false)}>Cancel</button>
-                  <button type="submit" className="found-submit">{reportSubmitted ? "Submitted" : "Submit found item"}</button>
+                  <button type="submit" className="found-submit">{reportSubmitted ? "Submitted" : reportType === "lost" ? "Submit report" : "Submit found item"}</button>
                 </div>
               </div>
             </form>

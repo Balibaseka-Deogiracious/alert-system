@@ -84,7 +84,10 @@ export async function loginAccount(email: string, password: string): Promise<Ses
   const response = await fetch(`${API_URL}/auth/signin`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
   const data = await response.json();
   if (!response.ok) throw new Error(data.detail || "Sign-in failed.");
-  return data.account as Session;
+  if (!data.account || typeof data.account !== "object" || typeof data.account.role !== "string") {
+    throw new Error("The account service returned an incomplete account.");
+  }
+  return { ...data.account, role: normalizeRole(data.account.role) } as Session;
 }
 
 export function getSession(): Session | null {
@@ -103,7 +106,15 @@ export function clearSession(): void {
   window.localStorage.removeItem(SESSION_KEY);
 }
 
-export function dashboardPath(role: AccountRole): string {
-  if (role === "system_admin") return "/system-admin";
-  return role === "moderator" ? "/admin" : "/student";
+function normalizeRole(role: string): AccountRole {
+  const normalizedRole = role.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (normalizedRole === "system_admin") return "system_admin";
+  if (normalizedRole === "moderator") return "moderator";
+  return "student";
+}
+
+export function dashboardPath(role: string): string {
+  const normalizedRole = normalizeRole(role);
+  if (normalizedRole === "system_admin") return "/system-admin";
+  return normalizedRole === "moderator" ? "/admin" : "/student";
 }

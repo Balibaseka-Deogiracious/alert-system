@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Activity, ArrowDownToLine, Check, ChevronDown, CircleHelp, ClipboardCheck,
   Database, FileClock, FileText, KeyRound, LayoutDashboard, MapPin, Menu,
@@ -8,7 +9,7 @@ import {
   ToggleLeft, Trash2, UserPlus, UsersRound, X
 } from "lucide-react";
 import { ProfileDropdown, ThemeToggle } from "../theme-provider";
-import { AdminDashboard, AdminUser, createAdminModerator, deleteAdminUser, getAdminDashboard, registerAccount, updateAdminUser } from "../auth";
+import { AdminDashboard, AdminUser, createAdminModerator, deleteAdminUser, getAdminDashboard, getSession, registerAccount, setSession, updateAdminUser } from "../auth";
 
 type Role = {
   name: string;
@@ -187,6 +188,7 @@ function SectionCharts({ data }: { data: SectionChartData }) {
 }
 
 export default function SystemAdminPage() {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("Overview");
   const [selectedRole, setSelectedRole] = useState("System Administrator");
@@ -199,20 +201,21 @@ export default function SystemAdminPage() {
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
   const [newPerson, setNewPerson] = useState({ name: "", id: "", email: "", password: "", faculty: "" });
   const [saved, setSaved] = useState(false);
+  const [session, setCurrentSession] = useState<ReturnType<typeof getSession>>(null);
 
   useEffect(() => {
-    const session = getSession();
-    if (!session || session.role !== "system_admin") router.replace("/signin");
-    else setSession(session);
+    const currentSession = getSession();
+    if (!currentSession || currentSession.role !== "system_admin") router.replace("/signin");
+    else setCurrentSession(currentSession);
   }, [router]);
 
   useEffect(() => {
     getAdminDashboard().then((data) => { setAdminData(data); setUserRecords(data.users); }).catch((error) => setDataError(error instanceof Error ? error.message : "Unable to load admin data."));
   }, []);
-  const adminName = "System Administrator";
-  const adminInitials = "SA";
-  const adminId = "SYS-0001";
-  const adminEmail = "";
+  const adminName = session ? `${session.firstName} ${session.lastName}`.trim() : "System Administrator";
+  const adminInitials = session ? `${session.firstName.charAt(0)}${session.lastName.charAt(0)}`.toUpperCase() : "SA";
+  const adminId = session?.studentId || "SYS-0001";
+  const adminEmail = session?.email || "";
   const moderators = userRecords.filter((user) => user.role === "moderator");
   const roleLabel = (role: string) => role === "moderator" ? "Faculty Moderator" : role === "system_admin" ? "System Administrator" : "Student";
   const filteredUsers = userRecords.filter((user) => `${user.name} ${user.id} ${user.role} ${user.faculty || ""}`.toLowerCase().includes(search.toLowerCase()));

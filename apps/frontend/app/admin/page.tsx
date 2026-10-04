@@ -7,6 +7,7 @@ import {
   PackageCheck, Radio, Search, Settings2, ShieldCheck, Siren, SlidersHorizontal,
   UserPlus, UsersRound, X,
 } from "lucide-react";
+import { getSession } from "../auth";
 import { AdminThemeToggle, ProfileDropdown } from "../theme-provider";
 
 const FOUND_ITEMS_STORAGE_KEY = "unialert-found-items";
@@ -191,7 +192,7 @@ function AdminFeatureView({ name }: { name: string }) {
     return { label: labelParts.join(" "), value, icon: [ShieldCheck, UsersRound, Search][index % 3] };
   });
 
-  const featureActionLabel = isLostReports ? "Report item" : isFoundItems ? "Report found item" : isClaimApprovals ? "" : "Add user";
+  const featureActionLabel = isLostReports ? "Report lost item" : isFoundItems ? "Report found item" : isClaimApprovals ? "" : "Add user";
   const openFeatureAction = () => {
     if (isClaimApprovals) return;
     if (isLostReports) {
@@ -518,8 +519,12 @@ function AdminFeatureView({ name }: { name: string }) {
 }
 
 export default function HomePage() {
+  const [moderatorName, setModeratorName] = useState("J. Vargas");
+  const [moderatorInitials, setModeratorInitials] = useState("JV");
   const [activeNav, setActiveNav] = useState("Overview & Triage");
   const [claimFilter, setClaimFilter] = useState("All Risk Tiers");
+  const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
+  const [claimActionMode, setClaimActionMode] = useState<"view" | "edit">("view");
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastSent, setBroadcastSent] = useState(false);
   const [search, setSearch] = useState("");
@@ -543,6 +548,15 @@ export default function HomePage() {
     window.localStorage.removeItem("unialert-session");
     window.location.reload();
   };
+
+  useEffect(() => {
+    const session = getSession();
+    if (!session) return;
+
+    const name = `${session.firstName} ${session.lastName}`.trim();
+    setModeratorName(name || "J. Vargas");
+    setModeratorInitials(`${session.firstName.charAt(0)}${session.lastName.charAt(0)}`.toUpperCase() || "JV");
+  }, []);
 
   const navSections: Array<{ label: string; items: Array<[string, typeof Search | typeof PackageCheck | typeof KeyRound | typeof LayoutDashboard | typeof UsersRound | typeof ShieldCheck, string, string]> }> = [
     { label: "", items: [["Overview & Triage", LayoutDashboard, "", "active"], ["User Registry", UsersRound, "", ""], ["Moderator Team", ShieldCheck, "", ""]] },

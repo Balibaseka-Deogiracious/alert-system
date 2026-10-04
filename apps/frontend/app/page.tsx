@@ -74,6 +74,12 @@ export default function HomePage() {
   const [reportForm, setReportForm] = useState({ title: "", location: "", category: "", description: "" });
   const [reportImage, setReportImage] = useState("");
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredSubmittedItems = submittedItems.filter((item) => !normalizedSearchQuery || `${item.title} ${item.location} ${item.category} ${item.description}`.toLowerCase().includes(normalizedSearchQuery));
+  const filteredCatalogItems = items.filter((item) => !normalizedSearchQuery || `${item.title} ${item.place} ${item.detail}`.toLowerCase().includes(normalizedSearchQuery));
+  const searchResultCount = filteredSubmittedItems.length + filteredCatalogItems.length;
 
   useEffect(() => {
     const session = getSession();
@@ -113,7 +119,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="portal-shell">
+    <div className="portal-shell" id="top">
       <header className="site-header">
         <div className="brand-wrap">
           <div className="brand-mark">U</div>
@@ -160,13 +166,13 @@ export default function HomePage() {
           <div className="hero-actions">
             <button type="button" onClick={() => setReportType("found")}>Report Found Item</button>
             <button type="button" className="secondary" onClick={() => setReportType("lost")}>Report Lost Item</button>
-            <button type="button" className="ghost">Find an Item</button>
+            <a href="#recovery-registry" className="ghost">Find an Item</a>
           </div>
 
           <div className="quick-search">
             <div className="search-field search-text">
               <span>⌕</span>
-              <input placeholder="Search keywords (e.g., 'Hydro Flask', 'MacBook', 'Leather Keyring')..." />
+              <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search keywords (e.g., 'Hydro Flask', 'MacBook', 'Leather Keyring')..." aria-label="Search recovered items" />
             </div>
 
             <div className="search-field select-field">
@@ -195,7 +201,7 @@ export default function HomePage() {
               </select>
             </div>
 
-            <button type="button" className="search-submit">
+            <button type="button" className="search-submit" onClick={() => document.getElementById("recovery-registry")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
               Search Campus Registry
             </button>
           </div>
@@ -232,7 +238,7 @@ export default function HomePage() {
           </div>
 
           <div className="item-grid">
-            {submittedItems.map((item) => (
+            {filteredSubmittedItems.map((item) => (
               <article key={item.id} className="item-card submitted-item-card">
                 <div className="image-wrap">
                   {item.image ? (
@@ -268,7 +274,7 @@ export default function HomePage() {
                 </div>
               </article>
             ))}
-            {items.map((item) => (
+            {filteredCatalogItems.map((item) => (
               <article key={item.ref} className="item-card">
                 <div className="image-wrap">
                   <Image src={item.image} alt={item.title} width={640} height={420} />
@@ -300,11 +306,12 @@ export default function HomePage() {
                     >
                       View Item
                     </button>
-                    <button type="button" className="claim-button">Submit Claim</button>
+                    <Link href="/signin" className="claim-button">Submit Claim</Link>
                   </div>
                 </div>
               </article>
             ))}
+            {searchResultCount === 0 && <div className="empty-feed-state">No recovered items match &ldquo;{searchQuery}&rdquo;. Try a different item name, location, or keyword.</div>}
           </div>
 
           <div className="explore-row">
@@ -464,29 +471,40 @@ export default function HomePage() {
           <div className="brand-wrap narrow">
             <div className="brand-mark">U</div>
             <div className="brand-text">
-              <span>UniAlert Campus Safety</span>
+              <span>UniAlert</span>
+              <small>Campus Safety &amp; Property Recovery</small>
             </div>
           </div>
-          <p>Dedicated to rapid incident communications and verified campus property claims across all academic facilities.</p>
+          <p>Trusted campus safety communications and verified property recovery for students, faculty, and staff.</p>
         </div>
 
         <div className="footer-column">
-          <h4>Property Recovery Centers</h4>
-          <p>Central Hub: Student Union Room 104</p>
-          <p>North Annex: Engineering Hall Concierge</p>
-          <p>Hours: Mon–Fri 08:00 - 18:00 EST</p>
+          <h4>Explore</h4>
+          <a href="#recovery-registry">Campus recovery feed</a>
+          <a href="#alerts">Safety bulletins</a>
+          <a href="#recovery-registry">Report found property</a>
+          <a href="#top">Back to top</a>
         </div>
 
         <div className="footer-column">
-          <h4>Campus Police &amp; Dispatch</h4>
-          <p>Emergency Desk: 555-0199 (Line 1)</p>
-          <p>Non-Emergency Desk: 555-0143</p>
-          <p>Safety Escort Services: Ext. 50</p>
+          <h4>Support</h4>
+          <a href="tel:5550199">Emergency desk: 555-0199</a>
+          <a href="tel:5550143">Non-emergency: 555-0143</a>
+          <a href="mailto:safety@kyu.ac.ug">safety@kyu.ac.ug</a>
+          <span>Campus support available 24/7</span>
         </div>
 
         <div className="footer-column">
-          <h4>Statutory &amp; Privacy Acts</h4>
-          <p>Compliant with Higher Education Cler Act and FERPA data security standards for personal student effects.</p>
+          <h4>Information</h4>
+          <a href="#privacy">Privacy and data use</a>
+          <a href="#accessibility">Accessibility</a>
+          <a href="#terms">Terms of use</a>
+          <span>Identifiers are masked for student privacy.</span>
+        </div>
+
+        <div className="footer-bottom">
+          <span>© 2026 UniAlert. Campus Safety &amp; Property Recovery.</span>
+          <span>Official university service · All campuses</span>
         </div>
       </footer>
 
