@@ -9,7 +9,7 @@ import {
   ToggleLeft, Trash2, UserPlus, UsersRound, X
 } from "lucide-react";
 import { ProfileDropdown, ThemeToggle } from "../theme-provider";
-import { AdminDashboard, AdminUser, createAdminModerator, deleteAdminUser, getAdminDashboard, getSession, registerAccount, setSession, updateAdminUser } from "../auth";
+import { AdminDashboard, AdminUser, createAdminAlert, createAdminFaculty, createAdminModerator, createAdminStation, createAdminUser, deleteAdminUser, getAdminDashboard, getSession, setSession, updateAdminUser } from "../auth";
 
 type Role = {
   name: string;
@@ -166,7 +166,7 @@ function AdminSectionView({ section, records, chartData, onManage, onDelete }: {
   const sectionRecords = records || section.records;
 
   return <div className="admin-section-view">
-    <div className="system-heading section-heading"><div><div className="system-eyebrow"><b>{section.eyebrow}</b><span>Super administrator workspace</span></div><h1>{section.title}</h1><p>{section.description}</p></div>{onManage ? <button className="system-primary" onClick={onManage}><UserPlus size={14} /> {section.title === "Moderator Team" ? "Add moderator" : "Add user"}</button> : <button className="system-primary"><Settings2 size={14} /> Manage section</button>}</div>
+    <div className="system-heading section-heading"><div><div className="system-eyebrow"><b>{section.eyebrow}</b><span>Super administrator workspace</span></div><h1>{section.title}</h1><p>{section.description}</p></div>{onManage ? <button className={`system-primary ${section.title === "Faculties & Departments" || section.title === "Recovery Stations" || section.title === "Campus Broadcasts" ? "faculty-action" : "user-action"}`} onClick={onManage}>{section.title === "Faculties & Departments" || section.title === "Recovery Stations" || section.title === "Campus Broadcasts" ? <Plus size={14} /> : <UserPlus size={14} />} {section.title === "Moderator Team" ? "Add moderator" : section.title === "Faculties & Departments" ? "Add faculty" : section.title === "Recovery Stations" ? "Add station" : section.title === "Campus Broadcasts" ? "Add alert" : "Add user"}</button> : <button className="system-primary"><Settings2 size={14} /> Manage section</button>}</div>
     <div className="section-kpis">{section.metrics.map(([value, label, note]) => <article key={label}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>)}</div>
     {chart && <SectionCharts data={chart} />}
     <section className="system-panel section-records"><div className="system-panel-heading"><div><span>Administrative view</span><h2>{section.recordsTitle}</h2><p>Current records and platform state for this control area.</p></div><button><ArrowDownToLine size={13} /> Export view</button></div><div className="section-record-list">{sectionRecords.map(([name, detail, status], index) => <div className="section-record" key={`${name}-${index}`}><span className="section-record-number">{String(index + 1).padStart(2, "0")}</span><span><b>{name}</b><small>{detail}</small></span><strong>{status}</strong>{onDelete ? <button className="section-delete" onClick={() => onDelete(name)} aria-label={`Delete ${name}`}><Trash2 size={15} /></button> : <button aria-label={`Open ${name}`}><ChevronDown size={15} /></button>}</div>)}</div></section>
@@ -195,6 +195,18 @@ export default function SystemAdminPage() {
   const [search, setSearch] = useState("");
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [manageMode, setManageMode] = useState<"user" | "moderator" | null>(null);
+  const [facultyOpen, setFacultyOpen] = useState(false);
+  const [newFaculty, setNewFaculty] = useState({ name: "", campus: "" });
+  const [facultyError, setFacultyError] = useState("");
+  const [facultySubmitting, setFacultySubmitting] = useState(false);
+  const [stationOpen, setStationOpen] = useState(false);
+  const [newStation, setNewStation] = useState({ name: "", campus: "", lockers: "" });
+  const [stationError, setStationError] = useState("");
+  const [stationSubmitting, setStationSubmitting] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [newAlert, setNewAlert] = useState({ title: "", message: "", audience: "All students" });
+  const [alertError, setAlertError] = useState("");
+  const [alertSubmitting, setAlertSubmitting] = useState(false);
   const [userRecords, setUserRecords] = useState<UserRecord[]>([]);
   const [adminData, setAdminData] = useState<AdminDashboard | null>(null);
   const [dataError, setDataError] = useState("");
@@ -212,10 +224,21 @@ export default function SystemAdminPage() {
   useEffect(() => {
     getAdminDashboard().then((data) => { setAdminData(data); setUserRecords(data.users); }).catch((error) => setDataError(error instanceof Error ? error.message : "Unable to load admin data."));
   }, []);
+  const refreshAdminDashboard = async () => {
+    const data = await getAdminDashboard();
+    setAdminData(data);
+    setUserRecords(data.users);
+  };
   const adminName = session ? `${session.firstName} ${session.lastName}`.trim() : "System Administrator";
   const adminInitials = session ? `${session.firstName.charAt(0)}${session.lastName.charAt(0)}`.toUpperCase() : "SA";
   const adminId = session?.studentId || "SYS-0001";
   const adminEmail = session?.email || "";
+  const databaseAdmin = adminData?.users.find((user) => user.id === adminId || user.email === adminEmail);
+  const displayedAdminName = databaseAdmin?.name || adminName;
+  const displayedAdminInitials = databaseAdmin?.initials || adminInitials;
+  const displayedAdminId = databaseAdmin?.id || adminId;
+  const databaseNavItems = ["Users & Access", "Moderator Team", "Recovery Stations", "Campus Broadcasts", "Faculties & Departments", "Audit & Compliance", "System Settings"];
+  const navItems = adminData ? ["Overview", ...databaseNavItems.filter((item) => adminData.sections[item])] : ["Overview", ...databaseNavItems];
   const moderators = userRecords.filter((user) => user.role === "moderator");
   const roleLabel = (role: string) => role === "moderator" ? "Faculty Moderator" : role === "system_admin" ? "System Administrator" : "Student";
   const filteredUsers = userRecords.filter((user) => `${user.name} ${user.id} ${user.role} ${user.faculty || ""}`.toLowerCase().includes(search.toLowerCase()));
@@ -231,36 +254,95 @@ export default function SystemAdminPage() {
     setManageMode(mode);
   };
 
+  const openFacultyModal = () => {
+    setNewFaculty({ name: "", campus: "" });
+    setFacultyError("");
+    setFacultyOpen(true);
+  };
+
+  const openStationModal = () => {
+    setNewStation({ name: "", campus: "", lockers: "" });
+    setStationError("");
+    setStationOpen(true);
+  };
+
+  const openAlertModal = () => {
+    setNewAlert({ title: "", message: "", audience: "All students" });
+    setAlertError("");
+    setAlertOpen(true);
+  };
+
   const addPerson = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nameParts = newPerson.name.trim().split(/\s+/).filter(Boolean);
     if (manageMode === "moderator") {
       const [firstName, ...lastNames] = nameParts;
-      const created = await createAdminModerator({ firstName: firstName || "", lastName: lastNames.join(" "), email: newPerson.email.trim().toLowerCase(), password: newPerson.password, studentId: newPerson.id.trim(), faculty: newPerson.faculty.trim() });
-      setUserRecords((current) => [created, ...current]);
-      setAdminData((current) => current ? { ...current, users: [created, ...current.users], metrics: { ...current.metrics, users: current.metrics.users + 1, moderators: current.metrics.moderators + 1 } } : current);
+      await createAdminModerator({ firstName: firstName || "", lastName: lastNames.join(" "), email: newPerson.email.trim().toLowerCase(), password: newPerson.password, studentId: newPerson.id.trim(), faculty: newPerson.faculty.trim() });
+      await refreshAdminDashboard();
       setManageMode(null);
       return;
     }
-    const created = await registerAccount({ firstName: nameParts[0] || "", lastName: nameParts.slice(1).join(" "), email: newPerson.email.trim().toLowerCase(), password: newPerson.password });
-    const initials = nameParts.slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "US";
-    const added: AdminUser = { initials, name: newPerson.name.trim(), id: created.studentId || newPerson.id.trim(), role: "student", status: "Active", lastSeen: "Just now", faculty: newPerson.faculty.trim() || undefined, email: newPerson.email.trim().toLowerCase() };
-    setUserRecords((current) => [...current, added]);
-    setAdminData((current) => current ? { ...current, users: [added, ...current.users], metrics: { ...current.metrics, users: current.metrics.users + 1, students: current.metrics.students + 1 } } : current);
+    await createAdminUser({ firstName: nameParts[0] || "", lastName: nameParts.slice(1).join(" "), email: newPerson.email.trim().toLowerCase(), password: newPerson.password, studentId: newPerson.id.trim(), faculty: newPerson.faculty.trim() });
+    await refreshAdminDashboard();
     setManageMode(null);
+  };
+
+  const addFaculty = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFacultySubmitting(true);
+    setFacultyError("");
+    try {
+      await createAdminFaculty(newFaculty);
+      await refreshAdminDashboard();
+      setFacultyOpen(false);
+    } catch (error) {
+      setFacultyError(error instanceof Error ? error.message : "Unable to create faculty.");
+    } finally {
+      setFacultySubmitting(false);
+    }
+  };
+
+  const addStation = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setStationSubmitting(true);
+    setStationError("");
+    try {
+      await createAdminStation({ name: newStation.name, campus: newStation.campus, lockers: Number(newStation.lockers) });
+      await refreshAdminDashboard();
+      setStationOpen(false);
+    } catch (error) {
+      setStationError(error instanceof Error ? error.message : "Unable to create recovery station.");
+    } finally {
+      setStationSubmitting(false);
+    }
+  };
+
+  const addAlert = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAlertSubmitting(true);
+    setAlertError("");
+    try {
+      await createAdminAlert(newAlert);
+      await refreshAdminDashboard();
+      setAlertOpen(false);
+    } catch (error) {
+      setAlertError(error instanceof Error ? error.message : "Unable to create alert.");
+    } finally {
+      setAlertSubmitting(false);
+    }
   };
 
   const deletePerson = async (name: string) => {
     const user = userRecords.find((record) => record.name === name);
     if (!user) return;
     await deleteAdminUser(user.id);
-    setUserRecords((current) => current.filter((record) => record.id !== user.id));
+    await refreshAdminDashboard();
   };
 
   const changeUserRole = async (role: "student" | "moderator") => {
     if (!selectedUser) return;
-    const updated = await updateAdminUser(selectedUser.id, role, selectedUser.faculty || "");
-    setUserRecords((current) => current.map((user) => user.id === updated.id ? updated : user));
+    await updateAdminUser(selectedUser.id, role, selectedUser.faculty || "");
+    await refreshAdminDashboard();
     setSelectedUser(null);
   };
 
@@ -278,7 +360,7 @@ export default function SystemAdminPage() {
         <div className="system-actions">
           <label className="system-search"><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search users, roles, logs..." /></label><ThemeToggle />
           <button className="system-icon" aria-label="Help"><CircleHelp size={16} /></button>
-          <ProfileDropdown name={adminName} initials={adminInitials} role="System Administrator" summary="Platform governance and access control" email={adminEmail} />
+          <ProfileDropdown name={displayedAdminName} initials={displayedAdminInitials} role="System Administrator" summary="Platform governance and access control" email={databaseAdmin?.email || adminEmail} />
         </div>
       </header>
 
@@ -286,10 +368,10 @@ export default function SystemAdminPage() {
       {sidebarOpen && <button className="system-scrim" onClick={() => setSidebarOpen(false)} aria-label="Close administration navigation" />}
 
       <aside className={`system-sidebar ${sidebarOpen ? "is-open" : ""}`}>
-        <div className="system-user"><span className="system-avatar large">{adminInitials}</span><span><b>{adminName}</b><small>{adminId} / Super Admin</small></span><button onClick={() => setSidebarOpen(false)} aria-label="Close navigation"><PanelLeftClose size={16} /></button></div>
+        <div className="system-user"><span className="system-avatar large">{displayedAdminInitials}</span><span><b>{displayedAdminName}</b><small>{displayedAdminId} / Super Admin</small></span><button onClick={() => setSidebarOpen(false)} aria-label="Close navigation"><PanelLeftClose size={16} /></button></div>
         <div className="system-nav-label">Platform governance</div>
         <nav className="system-nav">
-                {["Overview", "Users & Access", "Moderator Team", "Recovery Stations", "Campus Broadcasts", "Faculties & Departments", "Audit & Compliance", "System Settings"].map((item) => (
+                {navItems.map((item) => (
             <button key={item} className={activeSection === item ? "selected" : ""} onClick={() => { setActiveSection(item); setSidebarOpen(false); }}>
               {item === "Overview" && <LayoutDashboard size={15} />}
               {item === "Users & Access" && <UsersRound size={15} />}
@@ -308,11 +390,11 @@ export default function SystemAdminPage() {
       <main className="system-main">
         <div className="system-workspace">
           <section className="system-content">
-            {activeSection !== "Overview" ? (liveSection ? <AdminSectionView section={liveSection} chartData={activeSection === "Users & Access" ? userChart : activeSection === "Moderator Team" ? moderatorChart : activeSection === "Faculties & Departments" ? departmentChart : undefined} records={activeSection === "Users & Access" ? userSectionRecords : activeSection === "Moderator Team" ? moderatorSectionRecords : undefined} onManage={activeSection === "Users & Access" ? () => openManageModal("user") : activeSection === "Moderator Team" ? () => openManageModal("moderator") : undefined} onDelete={activeSection === "Users & Access" || activeSection === "Moderator Team" ? deletePerson : undefined} /> : <div className="directory-empty">Loading database records...</div>) : <>
+            {activeSection !== "Overview" ? (liveSection ? <AdminSectionView section={liveSection} chartData={activeSection === "Users & Access" ? userChart : activeSection === "Moderator Team" ? moderatorChart : activeSection === "Faculties & Departments" ? departmentChart : undefined} records={activeSection === "Users & Access" ? userSectionRecords : activeSection === "Moderator Team" ? moderatorSectionRecords : undefined} onManage={activeSection === "Users & Access" ? () => openManageModal("user") : activeSection === "Moderator Team" ? () => openManageModal("moderator") : activeSection === "Faculties & Departments" ? openFacultyModal : activeSection === "Recovery Stations" ? openStationModal : activeSection === "Campus Broadcasts" ? openAlertModal : undefined} onDelete={activeSection === "Users & Access" || activeSection === "Moderator Team" ? deletePerson : undefined} /> : <div className="directory-empty">Loading database records...</div>) : <>
             {dataError && <div className="auth-error">{dataError}</div>}
             <div className="system-heading">
               <div><div className="system-eyebrow"><b>System Administrator</b><span>Least privilege enforced</span></div><h1>Platform governance &amp; access control</h1><p>Manage identity, permissions, configuration, and the audit trail behind every campus operation.</p></div>
-              <div className="system-heading-actions"><button className="system-secondary"><ArrowDownToLine size={14} /> Export audit log</button><button className="system-primary" onClick={() => setShowRoleModal(true)}><Plus size={14} /> Create role</button></div>
+              <div className="system-heading-actions"><button className="system-primary create-role-action" onClick={() => setShowRoleModal(true)}><Plus size={14} /> Create role</button></div>
             </div>
 
             <div className="admin-alert"><div className="admin-alert-icon"><ShieldCheck size={17} /></div><div><b>Security posture is healthy</b><p>All privileged accounts use SSO and multi-factor authentication. Two access reviews are due this week.</p></div><button onClick={() => setActiveSection("System Settings")}>Review settings</button></div>
@@ -350,6 +432,12 @@ export default function SystemAdminPage() {
           </section>
         </div>
       </main>
+
+      {facultyOpen && <div className="system-modal-backdrop"><form className="system-modal" onSubmit={addFaculty} role="dialog" aria-modal="true" aria-labelledby="faculty-modal-title"><button type="button" className="system-modal-close" onClick={() => setFacultyOpen(false)} aria-label="Close"><X size={17} /></button><span className="system-modal-icon"><Plus size={19} /></span><h2 id="faculty-modal-title">Add faculty</h2><p>Add a faculty or department to the university directory.</p><label>Faculty name<input required value={newFaculty.name} onChange={(event) => setNewFaculty({ ...newFaculty, name: event.target.value })} placeholder="e.g. Computer Engineering" /></label><label>Campus or location<input required value={newFaculty.campus} onChange={(event) => setNewFaculty({ ...newFaculty, campus: event.target.value })} placeholder="e.g. Main Campus" /></label>{facultyError && <div className="auth-error">{facultyError}</div>}<div className="system-modal-actions"><button type="button" className="system-secondary" onClick={() => setFacultyOpen(false)}>Cancel</button><button type="submit" className="system-primary faculty-action" disabled={facultySubmitting}><Check size={14} /> {facultySubmitting ? "Adding..." : "Add faculty"}</button></div></form></div>}
+
+      {stationOpen && <div className="system-modal-backdrop"><form className="system-modal" onSubmit={addStation} role="dialog" aria-modal="true" aria-labelledby="station-modal-title"><button type="button" className="system-modal-close" onClick={() => setStationOpen(false)} aria-label="Close"><X size={17} /></button><span className="system-modal-icon"><Plus size={19} /></span><h2 id="station-modal-title">Add recovery station</h2><p>Register a campus location for secure property custody.</p><label>Station name<input required value={newStation.name} onChange={(event) => setNewStation({ ...newStation, name: event.target.value })} placeholder="e.g. North Commons Concierge" /></label><label>Campus or location<input required value={newStation.campus} onChange={(event) => setNewStation({ ...newStation, campus: event.target.value })} placeholder="e.g. North Campus" /></label><label>Locker capacity<input required type="number" min="1" value={newStation.lockers} onChange={(event) => setNewStation({ ...newStation, lockers: event.target.value })} placeholder="e.g. 12" /></label>{stationError && <div className="auth-error">{stationError}</div>}<div className="system-modal-actions"><button type="button" className="system-secondary" onClick={() => setStationOpen(false)}>Cancel</button><button type="submit" className="system-primary faculty-action" disabled={stationSubmitting}><Check size={14} /> {stationSubmitting ? "Adding..." : "Add station"}</button></div></form></div>}
+
+      {alertOpen && <div className="system-modal-backdrop"><form className="system-modal" onSubmit={addAlert} role="dialog" aria-modal="true" aria-labelledby="alert-modal-title"><button type="button" className="system-modal-close" onClick={() => setAlertOpen(false)} aria-label="Close"><X size={17} /></button><span className="system-modal-icon"><Plus size={19} /></span><h2 id="alert-modal-title">Add campus alert</h2><p>Create an alert draft for campus broadcast review.</p><label>Alert title<input required value={newAlert.title} onChange={(event) => setNewAlert({ ...newAlert, title: event.target.value })} placeholder="e.g. Science Tower maintenance" /></label><label>Audience<select value={newAlert.audience} onChange={(event) => setNewAlert({ ...newAlert, audience: event.target.value })}><option>All students</option><option>Faculty and staff</option><option>Specific campus</option></select></label><label>Message<textarea required value={newAlert.message} onChange={(event) => setNewAlert({ ...newAlert, message: event.target.value })} placeholder="Write the alert message" /></label>{alertError && <div className="auth-error">{alertError}</div>}<div className="system-modal-actions"><button type="button" className="system-secondary" onClick={() => setAlertOpen(false)}>Cancel</button><button type="submit" className="system-primary faculty-action" disabled={alertSubmitting}><Check size={14} /> {alertSubmitting ? "Adding..." : "Add alert"}</button></div></form></div>}
 
       {manageMode && <div className="system-modal-backdrop"><form className="system-modal" onSubmit={addPerson} role="dialog" aria-modal="true" aria-labelledby="person-modal-title"><button type="button" className="system-modal-close" onClick={() => setManageMode(null)} aria-label="Close"><X size={17} /></button><span className="system-modal-icon"><UserPlus size={19} /></span><h2 id="person-modal-title">{manageMode === "moderator" ? "Add faculty moderator" : "Add system user"}</h2><p>{manageMode === "moderator" ? "Create a moderator account that can sign in to the moderator dashboard." : "Create a user account for the UniAlert directory."}</p><label>Full name<input required value={newPerson.name} onChange={(event) => setNewPerson({ ...newPerson, name: event.target.value })} placeholder="e.g. Jordan Lee" /></label><label>{manageMode === "moderator" ? "Moderator email" : "User email"}<input required type="email" pattern="^[^\s@]+@(std\.)?kyu\.ac\.ug$" title="Use a valid KYU email" value={newPerson.email} onChange={(event) => setNewPerson({ ...newPerson, email: event.target.value })} placeholder="name@kyu.ac.ug" /></label><label>{manageMode === "moderator" ? "Moderator password" : "Password"}<input required type="password" minLength={8} value={newPerson.password} onChange={(event) => setNewPerson({ ...newPerson, password: event.target.value })} placeholder="At least 8 characters" /></label><label>{manageMode === "moderator" ? "Moderator ID" : "User ID"}<input required value={newPerson.id} onChange={(event) => setNewPerson({ ...newPerson, id: event.target.value })} placeholder={manageMode === "moderator" ? "e.g. MOD-2094" : "e.g. STU-483920"} /></label><label>{manageMode === "moderator" ? "Assign faculty or campus" : "Faculty or department (optional)"}<input value={newPerson.faculty} onChange={(event) => setNewPerson({ ...newPerson, faculty: event.target.value })} placeholder="e.g. Computer Engineering" /></label><div className="system-modal-actions"><button type="button" className="system-secondary" onClick={() => setManageMode(null)}>Cancel</button><button type="submit" className="system-primary"><Check size={14} /> {manageMode === "moderator" ? "Add moderator" : "Add user"}</button></div></form></div>}
       {selectedUser && <div className="system-modal-backdrop"><div className="system-modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title"><button className="system-modal-close" onClick={() => setSelectedUser(null)} aria-label="Close"><X size={17} /></button><span className="system-modal-icon"><SlidersHorizontal size={19} /></span><h2 id="profile-modal-title">Change profile</h2><p>{selectedUser.name} • {selectedUser.email}</p><label>Faculty or department<input value={selectedUser.faculty || ""} onChange={(event) => setSelectedUser({ ...selectedUser, faculty: event.target.value })} placeholder="e.g. Computer Engineering" /></label><div className="system-modal-actions"><button className="system-secondary" onClick={() => setSelectedUser(null)}>Cancel</button>{selectedUser.role === "moderator" ? <button className="system-primary" onClick={() => changeUserRole("student")}>Make student</button> : <button className="system-primary" onClick={() => changeUserRole("moderator")}>Make moderator</button>}</div></div></div>}

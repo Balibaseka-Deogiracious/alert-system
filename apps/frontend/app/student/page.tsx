@@ -20,6 +20,11 @@ type FoundItem = {
   submittedAt: string;
 };
 
+type ClaimTarget = {
+  itemName: string;
+  location: string;
+};
+
 const matches = [
   {
     name: "Midnight Blue Leather Backpack",
@@ -93,6 +98,9 @@ export default function StudentDashboardPage() {
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [report, setReport] = useState({ title: "", location: "", category: "", description: "", image: "" });
   const [claimSubmitted, setClaimSubmitted] = useState("");
+  const [claimTarget, setClaimTarget] = useState<ClaimTarget | null>(null);
+  const [claimSubmitting, setClaimSubmitting] = useState(false);
+  const [claimError, setClaimError] = useState("");
   const [session, setCurrentSession] = useState<ReturnType<typeof getSession>>(null);
   const [dashboardData, setDashboardData] = useState<StudentDashboardData>({ matches, campusFound, bulletinItems, recoveryStations });
 
@@ -148,13 +156,26 @@ export default function StudentDashboardPage() {
     }, 1800);
   }
 
-  async function handleClaim(itemName: string, location: string) {
+  function openClaimForm(itemName: string, location: string) {
+    setClaimError("");
+    setClaimTarget({ itemName, location });
+  }
+
+  async function handleClaimSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!claimTarget) return;
+
+    setClaimSubmitting(true);
+    setClaimError("");
     try {
-      await submitClaim({ studentId, studentName: displayName, itemName, location });
-      setClaimSubmitted(itemName);
+      await submitClaim({ studentId, studentName: displayName, itemName: claimTarget.itemName, location: claimTarget.location });
+      setClaimSubmitted(claimTarget.itemName);
+      setClaimTarget(null);
       window.setTimeout(() => setClaimSubmitted(""), 2500);
     } catch (error) {
-      console.error("Failed to submit claim", error);
+      setClaimError(error instanceof Error ? error.message : "Unable to submit claim.");
+    } finally {
+      setClaimSubmitting(false);
     }
   }
 
@@ -200,27 +221,19 @@ export default function StudentDashboardPage() {
 
         <div className="content-area">
           {activeSection !== "User Dashboard" && <section className="student-subview">
-            <div className="subview-heading"><div><span className="eyebrow">{activeSection === "Find an Item" ? "Property recovery" : "Campus communications"}</span><h1>{activeSection}</h1><p>{activeSection === "Find an Item" ? "Search recently recovered property and review possible matches across campus stations." : "Stay informed about safety, facility, and operational notices across campus."}</p></div>{activeSection === "Find an Item" && <button className="soft-accent active" onClick={() => { setReportType("found"); setReportOpen(true); }}>Report Found Item</button>}</div>
-            {activeSection === "Find an Item" ? <div className="student-subview-grid"><section className="panel search-results-panel"><div className="panel-header"><div><span className="eyebrow">Recovered property</span><h2>Available items</h2></div><div className="header-sort"><span>Latest first</span></div></div>{dashboardData.campusFound.map((item) => <article className="search-result" key={item.title}><div className={`thumb ${item.tone}`}><span>{item.title.charAt(0)}</span></div><div><span className="found-status">{item.status}</span><h3>{item.title}</h3><small>{item.place} • {item.time}</small></div><button className="claim-button">{item.action}</button></article>)}</section><section className="panel search-results-panel"><div className="panel-header"><div><span className="eyebrow">Possible matches</span><h2>Reports to review</h2></div></div>{dashboardData.matches.map((item) => <article className="match-result" key={item.caseId}><div><strong>{item.name}</strong><small>{item.location} • {item.caseId}</small></div><span className={`tag ${item.tone}`}>{item.status}</span></article>)}</section></div> : <section className="panel alerts-directory"><div className="panel-header"><div><span className="eyebrow">Live bulletins</span><h2>Campus alerts</h2></div><span className="status-pill success">{dashboardData.bulletinItems.length} active</span></div>{dashboardData.bulletinItems.map((item) => <article key={item.title} className={`bulletin-card ${item.color}`}><div className="bulletin-head"><span>{item.type}</span><time>{item.time}</time></div><h3>{item.title}</h3><p>{item.text}</p></article>)}</section>}
+            <div className="subview-heading"><div><span className="eyebrow">{activeSection === "Find an Item" ? "Property recovery" : "Campus communications"}</span><h1>{activeSection}</h1><p>{activeSection === "Find an Item" ? "Search recently recovered property and review possible matches across campus stations." : "Stay informed about safety, facility, and operational notices across campus."}</p></div>{activeSection === "Find an Item" && <button className="soft-accent report-found-button" onClick={() => { setReportType("found"); setReportOpen(true); }}>Report Found Item</button>}</div>
+            {activeSection === "Find an Item" ? <div className="student-subview-grid"><section className="panel search-results-panel"><div className="panel-header"><div><span className="eyebrow">Recovered property</span><h2>Available items</h2></div><div className="header-sort"><span>Latest first</span></div></div>{dashboardData.campusFound.map((item) => <article className="search-result" key={item.title}><div className={`thumb ${item.tone}`}><span>{item.title.charAt(0)}</span></div><div><span className="found-status">{item.status}</span><h3>{item.title}</h3><small>{item.place} • {item.time}</small></div><button className="claim-button" onClick={() => openClaimForm(item.title, item.place)}>{claimSubmitted === item.title ? "Submitted" : item.action}</button></article>)}</section><section className="panel search-results-panel"><div className="panel-header"><div><span className="eyebrow">Possible matches</span><h2>Reports to review</h2></div></div>{dashboardData.matches.map((item) => <article className="match-result" key={item.caseId}><div><strong>{item.name}</strong><small>{item.location} • {item.caseId}</small></div><span className={`tag ${item.tone}`}>{item.status}</span></article>)}</section></div> : <section className="panel alerts-directory"><div className="panel-header"><div><span className="eyebrow">Live bulletins</span><h2>Campus alerts</h2></div><span className="status-pill success">{dashboardData.bulletinItems.length} active</span></div>{dashboardData.bulletinItems.map((item) => <article key={item.title} className={`bulletin-card ${item.color}`}><div className="bulletin-head"><span>{item.type}</span><time>{item.time}</time></div><h3>{item.title}</h3><p>{item.text}</p></article>)}</section>}
           </section>}
           <div className={activeSection === "User Dashboard" ? "dashboard-home" : "dashboard-home hidden-home"}>
           <section className="welcome-card">
-            <div className="verification-row">
-              <span className="status-pill success">Verified Student Account</span>
-              <span className="status-pill muted">SSO authenticated via Duo</span>
-            </div>
-
             <div className="welcome-row">
               <div className="welcome-copy">
                 <h1>Welcome back, {displayName}</h1>
-                <p>
-                  <span className="tiny-id">ID:</span> {studentId} • {faculty} • University email pending
-                </p>
               </div>
 
               <div className="welcome-actions">
-                <button className="soft-accent" onClick={() => { setReportType("lost"); setReportOpen(true); }}>Report Lost Item</button>
-                <button className="soft-accent active" onClick={() => { setReportType("found"); setReportOpen(true); }}>Report Found Item</button>
+                <button className="soft-accent report-lost-button" onClick={() => { setReportType("lost"); setReportOpen(true); }}>Report Lost Item</button>
+                <button className="soft-accent report-found-button" onClick={() => { setReportType("found"); setReportOpen(true); }}>Report Found Item</button>
               </div>
             </div>
           </section>
@@ -230,11 +243,6 @@ export default function StudentDashboardPage() {
               <div className="summary-card-head"><div className="summary-label">Lost items reported</div><span className="summary-card-icon blue"><PackageSearch size={16} /></span></div>
               <div className="summary-inner">
                 <span className="summary-number">2</span>
-                <span className="summary-meta">Active cases</span>
-              </div>
-              <div className="summary-notes">
-                <span>Searching</span>
-                <span>1 Potential Match</span>
               </div>
             </div>
 
@@ -242,11 +250,6 @@ export default function StudentDashboardPage() {
               <div className="summary-card-head"><div className="summary-label">Safe transfer</div><span className="summary-card-icon teal"><ArrowLeftRight size={16} /></span></div>
               <div className="summary-inner">
                 <span className="summary-number">1</span>
-                <span className="summary-meta">Item transfer</span>
-              </div>
-              <div className="summary-notes">
-                <span>Approved</span>
-                <span>Library Desk</span>
               </div>
             </div>
 
@@ -254,11 +257,6 @@ export default function StudentDashboardPage() {
               <div className="summary-card-head"><div className="summary-label">Live bulletins</div><span className="summary-card-icon amber"><Bell size={16} /></span></div>
               <div className="summary-inner">
                 <span className="summary-number">3</span>
-                <span className="summary-meta">Active alerts</span>
-              </div>
-              <div className="summary-notes">
-                <span>1 Security</span>
-                <span>1 Facility</span>
               </div>
             </div>
 
@@ -266,11 +264,6 @@ export default function StudentDashboardPage() {
               <div className="summary-card-head"><div className="summary-label">Pending claims</div><span className="summary-card-icon violet"><ClipboardCheck size={16} /></span></div>
               <div className="summary-inner">
                 <span className="summary-number">2</span>
-                <span className="summary-meta">Verification queue</span>
-              </div>
-              <div className="summary-notes">
-                <span>1 Moderator</span>
-                <span>1 Ready</span>
               </div>
             </div>
           </section>
@@ -356,7 +349,7 @@ export default function StudentDashboardPage() {
                       <h3>{item.title}</h3>
                       <small>{item.place}</small>
                     </div>
-                    <button className="claim-button" onClick={() => handleClaim(item.title, item.place)}>{claimSubmitted === item.title ? "Submitted" : item.action}</button>
+                    <button className="claim-button" onClick={() => openClaimForm(item.title, item.place)}>{claimSubmitted === item.title ? "Submitted" : item.action}</button>
                   </article>
                 ))}
               </div>
@@ -464,6 +457,36 @@ export default function StudentDashboardPage() {
                 <div>
                   <button type="button" className="found-cancel" onClick={() => setReportOpen(false)}>Cancel</button>
                   <button type="submit" className="found-submit">{reportSubmitted ? "Submitted" : reportType === "lost" ? "Submit report" : "Submit found item"}</button>
+                </div>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {claimTarget && (
+        <div className="student-modal-backdrop">
+          <section className="found-report-modal claim-modal" role="dialog" aria-modal="true" aria-labelledby="claim-form-title">
+            <button className="found-report-close" onClick={() => setClaimTarget(null)} aria-label="Close claim form">×</button>
+            <div className="found-report-kicker">Approval request</div>
+            <h2 id="claim-form-title">Claim this item</h2>
+            <p>Confirm your details before sending this claim to campus staff for approval.</p>
+            <form onSubmit={handleClaimSubmit}>
+              <div className="claim-summary">
+                <div><span>Item</span><strong>{claimTarget.itemName}</strong></div>
+                <div><span>Found at</span><strong>{claimTarget.location}</strong></div>
+              </div>
+              <div className="found-form-grid">
+                <label>Student name<input value={displayName} readOnly /></label>
+                <label>Student ID<input value={studentId} readOnly /></label>
+              </div>
+              <label className="claim-confirmation"><input type="checkbox" required /> I confirm this item belongs to me and can provide proof of ownership if requested.</label>
+              {claimError && <div className="claim-error" role="alert">{claimError}</div>}
+              <div className="found-form-footer">
+                <span>Your request will be sent to the admin approval queue.</span>
+                <div>
+                  <button type="button" className="found-cancel" onClick={() => setClaimTarget(null)}>Cancel</button>
+                  <button type="submit" className="found-submit" disabled={claimSubmitting}>{claimSubmitting ? "Sending..." : "Send for approval"}</button>
                 </div>
               </div>
             </form>

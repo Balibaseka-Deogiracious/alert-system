@@ -56,6 +56,34 @@ export async function createAdminModerator(account: { firstName: string; lastNam
   return data.user as AdminUser;
 }
 
+export async function createAdminUser(account: { firstName: string; lastName: string; email: string; password: string; studentId: string; faculty: string }): Promise<AdminUser> {
+  const response = await fetch(`${API_URL}/system/admin-dashboard/users`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ first_name: account.firstName, last_name: account.lastName, email: account.email, password: account.password, student_id: account.studentId, faculty: account.faculty || null }) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Unable to create user account.");
+  return data.user as AdminUser;
+}
+
+export async function createAdminFaculty(faculty: { name: string; campus: string }): Promise<{ id: number; name: string; campus: string }> {
+  const response = await fetch(`${API_URL}/system/admin-dashboard/faculties`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(faculty) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Unable to create faculty.");
+  return data.faculty as { id: number; name: string; campus: string };
+}
+
+export async function createAdminStation(station: { name: string; campus: string; lockers: number }): Promise<{ id: number; name: string; campus: string; lockers: number }> {
+  const response = await fetch(`${API_URL}/system/admin-dashboard/stations`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(station) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Unable to create recovery station.");
+  return data.station as { id: number; name: string; campus: string; lockers: number };
+}
+
+export async function createAdminAlert(alert: { title: string; message: string; audience: string }): Promise<{ id: number; title: string; message: string; audience: string; status: string }> {
+  const response = await fetch(`${API_URL}/system/admin-dashboard/alerts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(alert) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Unable to create alert.");
+  return data.alert as { id: number; title: string; message: string; audience: string; status: string };
+}
+
 export async function deleteAdminUser(id: string): Promise<void> {
   const response = await fetch(`${API_URL}/system/admin-dashboard/users/${encodeURIComponent(id)}`, { method: "DELETE" });
   const data = await response.json();

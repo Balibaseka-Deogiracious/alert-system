@@ -7,6 +7,7 @@ import {
   MoreHorizontal, PackageCheck, Radio, Search, Settings2, ShieldCheck,
   SlidersHorizontal, UserPlus, UsersRound, X,
 } from "lucide-react";
+import { API_URL, createAdminUser, getSession } from "../auth";
 import { AdminThemeToggle, ProfileDropdown } from "../theme-provider";
 
 const FOUND_ITEMS_STORAGE_KEY = "unialert-found-items";
@@ -54,9 +55,23 @@ function AdminFeatureView({ name }: { name: string }) {
   const [selectedUser, setSelectedUser] = useState<{ name: string; id: string; faculty: string; mode: "details" | "edit" } | null>(null);
   const [claimDecisions, setClaimDecisions] = useState<Record<string, "Approved" | "Denied">>({});
   const [lostReportRows, setLostReportRows] = useState<string[]>(featureViews["Lost Reports"].rows);
+  const [userRows, setUserRows] = useState<string[]>(featureViews["User Registry"].rows);
+  const [newUser, setNewUser] = useState({ name: "", id: "", email: "", password: "", faculty: "" });
+  const [userCreateError, setUserCreateError] = useState("");
+  const [userCreateSubmitting, setUserCreateSubmitting] = useState(false);
 
   useEffect(() => {
     setSelectedReport(null);
+  }, [name]);
+
+  useEffect(() => {
+    if (name !== "User Registry") return;
+    fetch(`${API_URL}/system/admin-dashboard`, { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Unable to load users")))
+      .then((data: { users?: Array<{ name: string; id: string; role: string; faculty?: string }> }) => {
+        setUserRows((data.users || []).map((user) => `${user.name} • ${user.id} • ${user.faculty || user.role}`));
+      })
+      .catch((error) => console.error("Failed to load user registry", error));
   }, [name]);
 
   const view = featureViews[name];
@@ -97,8 +112,6 @@ function AdminFeatureView({ name }: { name: string }) {
     if (!isUserRegistry) return;
     setSelectedUser({ name: nameValue, id: idValue, faculty: facultyValue, mode });
   };
-
-  const tableRows = isLostReports ? lostReportRows : view.rows;
 
   const handleLostReportSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -226,6 +239,32 @@ function AdminFeatureView({ name }: { name: string }) {
     setNewLostReport({ reportId: "", itemName: "", location: "", description: "", status: "Possible match" });
   };
 
+  const submitNewUser = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setUserCreateSubmitting(true);
+    setUserCreateError("");
+    const nameParts = newUser.name.trim().split(/\s+/).filter(Boolean);
+    try {
+      const created = await createAdminUser({
+        firstName: nameParts[0] || "",
+        lastName: nameParts.slice(1).join(" "),
+        email: newUser.email.trim().toLowerCase(),
+        password: newUser.password,
+        studentId: newUser.id.trim(),
+        faculty: newUser.faculty.trim(),
+      });
+      setUserRows((current) => [`${created.name} • ${created.id} • ${created.faculty || created.role}`, ...current]);
+      setNewUser({ name: "", id: "", email: "", password: "", faculty: "" });
+      setAddUserOpen(false);
+    } catch (error) {
+      setUserCreateError(error instanceof Error ? error.message : "Unable to create user.");
+    } finally {
+      setUserCreateSubmitting(false);
+    }
+  };
+
+  const tableRows = isUserRegistry ? userRows : isLostReports ? lostReportRows : view.rows;
+
   return (
     <div className="admin-feature-view">
       <div className="feature-view-header">
@@ -237,7 +276,7 @@ function AdminFeatureView({ name }: { name: string }) {
         {!isClaimApprovals && (
           <div className="feature-header-actions">
             <button className={isUserRegistry || isFoundItems ? "success-button" : "danger-button"} onClick={openFeatureAction}>
-              {isLostReports ? <FileText size={15} /> : <UserPlus size={15} />}
+              {isLostReports || isFoundItems ? <FileText size={15} /> : <UserPlus size={15} />}
               {featureActionLabel}
             </button>
             {isUserRegistry && (
@@ -457,17 +496,19 @@ function AdminFeatureView({ name }: { name: string }) {
 
       {addUserOpen && (
         <div className="modal-backdrop" onClick={() => setAddUserOpen(false)}>
-          <div className="broadcast-modal add-user-modal" role="dialog" aria-modal="true" aria-labelledby="add-user-title" onClick={(event) => event.stopPropagation()}>
+          <form className="broadcast-modal add-user-modal" role="dialog" aria-modal="true" aria-labelledby="add-user-title" onClick={(event) => event.stopPropagation()} onSubmit={submitNewUser}>
             <button className="modal-close" onClick={() => setAddUserOpen(false)} aria-label="Close add user dialog"><X size={18} /></button>
             <div className="eyebrow"><b>User Registry</b><span>•</span><span>New account</span></div>
             <h2 id="add-user-title">Add user</h2>
             <p>Create a verified user directory record.</p>
-            <label className="add-user-field">Full name<input placeholder="e.g. Jordan Lee" /></label>
-            <label className="add-user-field">University email<input type="email" placeholder="jordan.lee@university.edu" /></label>
-            <label className="add-user-field">Password<input type="password" placeholder="Create a secure password" /></label>
-            <label className="add-user-field">Faculty<select defaultValue=""><option value="" disabled>Select faculty</option><option>Applied Science Faculty</option><option>Computer Engineering</option><option>Medical Biology</option></select></label>
-            <button className="success-button add-user-submit" onClick={() => setAddUserOpen(false)}><UserPlus size={14} /> Create user</button>
-          </div>
+            <label className="add-user-field">Full name<input required value={newUser.name} onChange={(event) => setNewUser({ ...newUser, name: event.target.value })} placeholder="e.g. Jordan Lee" /></label>
+            <label className="add-user-field">University email<input required type="email" pattern="^[^\s@]+@(std\.)?kyu\.ac\.ug$" value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} placeholder="jordan@kyu.ac.ug" /></label>
+            <label className="add-user-field">Password<input required type="password" minLength={8} value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} placeholder="At least 8 characters" /></label>
+            <label className="add-user-field">User ID<input required value={newUser.id} onChange={(event) => setNewUser({ ...newUser, id: event.target.value })} placeholder="e.g. STU-483920" /></label>
+            <label className="add-user-field">Faculty<select required value={newUser.faculty} onChange={(event) => setNewUser({ ...newUser, faculty: event.target.value })}><option value="" disabled>Select faculty</option><option>Applied Science Faculty</option><option>Computer Engineering</option><option>Medical Biology</option></select></label>
+            {userCreateError && <div className="auth-error">{userCreateError}</div>}
+            <button type="submit" className="success-button add-user-submit" disabled={userCreateSubmitting}><UserPlus size={14} /> {userCreateSubmitting ? "Creating..." : "Create user"}</button>
+          </form>
         </div>
       )}
 
@@ -540,14 +581,20 @@ function AdminFeatureView({ name }: { name: string }) {
 export default function HomePage() {
   const [activeNav, setActiveNav] = useState("Overview & Triage");
   const [claimFilter, setClaimFilter] = useState("All Risk Tiers");
+  const [session, setSession] = useState<ReturnType<typeof getSession>>(null);
   const [broadcastSent, setBroadcastSent] = useState(false);
   const [search, setSearch] = useState("");
   const [adminNotifications, setAdminNotifications] = useState<Array<{ claim_id: string; student_name: string; item_name: string; created_at: string | null; status: string }>>([]);
   const [itemSummary, setItemSummary] = useState({ found_items: 89, lost_items: 53 });
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
   const [claimActionMode, setClaimActionMode] = useState<"view" | "edit">("view");
-  const moderatorName = "Faculty Moderator";
-  const moderatorInitials = "FM";
+  useEffect(() => {
+    setSession(getSession());
+  }, []);
+
+  const moderatorName = session ? `${session.firstName} ${session.lastName}`.trim() : "Faculty Moderator";
+  const moderatorInitials = session ? `${session.firstName.charAt(0)}${session.lastName.charAt(0)}`.toUpperCase() : "FM";
+  const moderatorEmail = session?.email || "";
 
   const handleNavClick = (label: string) => {
     setActiveNav(label);
@@ -645,7 +692,7 @@ export default function HomePage() {
   };
 
   return <div className="admin-shell">
-    <header className="topbar"><div className="topbar-brand"><span className="mini-mark"><ShieldCheck size={14} /></span><span><b>UniAlert</b><small>Administrator Portal</small></span></div><div className="topbar-context"><ShieldCheck size={14} /> Campus Safety &amp; Property Recovery Service</div><div className="topbar-actions"><label className="global-search"><Search size={13} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search case ID, items..." /></label><button className="icon-button" aria-label="Notifications"><BellRing size={16} />{adminNotifications.length > 0 && <i>{adminNotifications.length}</i>}</button><ProfileDropdown name={moderatorName} initials={moderatorInitials} role="Faculty Moderator" summary="Campus property and claim operations" email="" /></div><AdminThemeToggle /></header>
+    <header className="topbar"><div className="topbar-brand"><span className="mini-mark"><ShieldCheck size={14} /></span><span><b>UniAlert</b><small>Administrator Portal</small></span></div><div className="topbar-context"><ShieldCheck size={14} /> Campus Safety &amp; Property Recovery Service</div><div className="topbar-actions"><label className="global-search"><Search size={13} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search case ID, items..." /></label><button className="icon-button" aria-label="Notifications"><BellRing size={16} />{adminNotifications.length > 0 && <i>{adminNotifications.length}</i>}</button><ProfileDropdown name={moderatorName} initials={moderatorInitials} role="Faculty Moderator" summary="Campus property and claim operations" email={moderatorEmail} /></div><AdminThemeToggle /></header>
     <main className="dashboard"><div className="workspace"><aside className="console-rail"><div className="rail-profile"><span className="rail-profile-avatar">{moderatorInitials}</span><span><b>{moderatorName}</b><small>Faculty Moderator</small></span></div><div className="rail-card"><div className="rail-title"><span></span><b></b></div>{navSections.map((section) => <div className="rail-section" key={section.label || "overview-section"}>{section.label && <small>{section.label}</small>}{section.items.map(([label, Icon, count, state]) => <button key={label} className={`rail-link ${activeNav === label ? "current" : ""} ${state}`} onClick={() => handleNavClick(label)}><span><Icon size={14} /> {label}</span>{count && <b>{count}</b>}</button>)}</div>)}</div><div className="rail-footer"><ProfileDropdown name={moderatorName} initials={moderatorInitials} role="Faculty Moderator" summary="Campus property and claim operations" email="" resetLabel="Reset admin details" onReset={handleResetAdminDetails} /></div></aside>
       <section className="content-stage">{activeNav === "Overview & Triage" && <div className="page-heading"><div><div className="eyebrow"><b></b><span></span><span></span></div><h1>Faculty Moderator &amp; Property Command</h1><p></p></div></div>}
         {activeNav === "Overview & Triage" && adminNotifications.length > 0 && <div className="notification-stack">

@@ -27,6 +27,32 @@ class ModeratorCreate(BaseModel):
     faculty: str | None = None
 
 
+class AdminUserCreate(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    password: str
+    student_id: str
+    faculty: str | None = None
+
+
+class FacultyCreate(BaseModel):
+    name: str
+    campus: str
+
+
+class StationCreate(BaseModel):
+    name: str
+    campus: str
+    lockers: int
+
+
+class AlertCreate(BaseModel):
+    title: str
+    message: str
+    audience: str
+
+
 class ClaimCreate(BaseModel):
     student_id: str
     student_name: str
@@ -140,11 +166,53 @@ async def ensure_admin_sections(db: AsyncSession) -> None:
     await db.commit()
 
 
+async def ensure_faculties_table(db: AsyncSession) -> None:
+    await db.execute(text("""
+        CREATE TABLE IF NOT EXISTS faculties (
+            faculty_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name VARCHAR(180) UNIQUE NOT NULL,
+            campus VARCHAR(180) NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """))
+    await db.commit()
+
+
+async def ensure_stations_table(db: AsyncSession) -> None:
+    await db.execute(text("""
+        CREATE TABLE IF NOT EXISTS recovery_stations (
+            station_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name VARCHAR(180) UNIQUE NOT NULL,
+            campus VARCHAR(180) NOT NULL,
+            lockers INTEGER NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """))
+    await db.commit()
+
+
+async def ensure_alerts_table(db: AsyncSession) -> None:
+    await db.execute(text("""
+        CREATE TABLE IF NOT EXISTS campus_alerts (
+            alert_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title VARCHAR(180) NOT NULL,
+            message TEXT NOT NULL,
+            audience VARCHAR(120) NOT NULL,
+            status VARCHAR(40) NOT NULL DEFAULT 'Draft',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """))
+    await db.commit()
+
+
 def account_view(row: object) -> dict[str, object]:
     created_at = row["created_at"]
+    first_name = (row["first_name"] or "").strip()
+    last_name = (row["last_name"] or "").strip()
+    initials = f"{first_name[:1]}{last_name[:1]}".upper() or "U"
     return {
-        "initials": f"{row['first_name'][0]}{row['last_name'][0]}".upper(),
-        "name": f"{row['first_name']} {row['last_name']}",
+        "initials": initials,
+        "name": " ".join(part for part in (first_name, last_name) if part),
         "id": row["student_id"],
         "role": row["role"],
         "status": "Active",
@@ -180,10 +248,98 @@ async def create_admin_moderator(account: ModeratorCreate, db: AsyncSession = De
     return {"user": account_view(result.mappings().one())}
 
 
+@router.post("/admin-dashboard/users", status_code=201)
+async def create_admin_user(account: AdminUserCreate, db: AsyncSession = Depends(get_db_session)) -> dict[str, object]:
+    if not re.fullmatch(r"[^\s@]+@(std\.)?kyu\.ac\.ug", account.email.lower()):
+        raise HTTPException(status_code=422, detail="Use a valid KYU user email.")
+    if len(account.password) < 8:
+        raise HTTPException(status_code=422, detail="Password must contain at least 8 characters.")
+    if not account.student_id.strip():
+        raise HTTPException(status_code=422, detail="User ID is required.")
+
+    await ensure_accounts_columns(db)
+    existing = await db.execute(text("SELECT id FROM accounts WHERE email = :email OR student_id = :student_id"), {"email": account.email.lower(), "student_id": account.student_id.strip()})
+    if existing.first():
+        raise HTTPException(status_code=409, detail="That email or user ID is already registered.")
+    result = await db.execute(text("""
+        INSERT INTO accounts (first_name, last_name, email, password_hash, student_id, role, faculty)
+        VALUES (:first_name, :last_name, :email, :password_hash, :student_id, 'student', :faculty)
+        RETURNING first_name, last_name, email, student_id, role, faculty, created_at
+    """), {
+        "first_name": account.first_name.strip(),
+        "last_name": account.last_name.strip(),
+        "email": account.email.lower(),
+        "password_hash": hashlib.sha256(account.password.encode("utf-8")).hexdigest(),
+        "student_id": account.student_id.strip(),
+        "faculty": account.faculty.strip() if account.faculty else None,
+    })
+    await db.commit()
+    return {"user": account_view(result.mappings().one())}
+
+
+@router.post("/admin-dashboard/faculties", status_code=201)
+async def create_admin_faculty(faculty: FacultyCreate, db: AsyncSession = Depends(get_db_session)) -> dict[str, object]:
+    name = faculty.name.strip()
+    campus = faculty.campus.strip()
+    if not name or not campus:
+        raise HTTPException(status_code=422, detail="Faculty name and campus are required.")
+    await ensure_faculties_table(db)
+    existing = await db.execute(text("SELECT faculty_id FROM faculties WHERE lower(name) = lower(:name)"), {"name": name})
+    if existing.first():
+        raise HTTPException(status_code=409, detail="That faculty already exists.")
+    result = await db.execute(text("""
+        INSERT INTO faculties (name, campus)
+        VALUES (:name, :campus)
+        RETURNING faculty_id, name, campus, created_at
+    """), {"name": name, "campus": campus})
+    await db.commit()
+    row = result.mappings().one()
+    return {"faculty": {"id": row["faculty_id"], "name": row["name"], "campus": row["campus"], "created_at": row["created_at"].isoformat()}}
+
+
+@router.post("/admin-dashboard/stations", status_code=201)
+async def create_admin_station(station: StationCreate, db: AsyncSession = Depends(get_db_session)) -> dict[str, object]:
+    name = station.name.strip()
+    campus = station.campus.strip()
+    if not name or not campus or station.lockers < 1:
+        raise HTTPException(status_code=422, detail="Station name, campus, and a positive locker capacity are required.")
+    await ensure_stations_table(db)
+    existing = await db.execute(text("SELECT station_id FROM recovery_stations WHERE lower(name) = lower(:name)"), {"name": name})
+    if existing.first():
+        raise HTTPException(status_code=409, detail="That recovery station already exists.")
+    result = await db.execute(text("""
+        INSERT INTO recovery_stations (name, campus, lockers)
+        VALUES (:name, :campus, :lockers)
+        RETURNING station_id, name, campus, lockers, created_at
+    """), {"name": name, "campus": campus, "lockers": station.lockers})
+    await db.commit()
+    row = result.mappings().one()
+    return {"station": {"id": row["station_id"], "name": row["name"], "campus": row["campus"], "lockers": row["lockers"], "created_at": row["created_at"].isoformat()}}
+
+
+@router.post("/admin-dashboard/alerts", status_code=201)
+async def create_admin_alert(alert: AlertCreate, db: AsyncSession = Depends(get_db_session)) -> dict[str, object]:
+    title = alert.title.strip()
+    message = alert.message.strip()
+    audience = alert.audience.strip()
+    if not title or not message or not audience:
+        raise HTTPException(status_code=422, detail="Alert title, message, and audience are required.")
+    await ensure_alerts_table(db)
+    result = await db.execute(text("""
+        INSERT INTO campus_alerts (title, message, audience)
+        VALUES (:title, :message, :audience)
+        RETURNING alert_id, title, message, audience, status, created_at
+    """), {"title": title, "message": message, "audience": audience})
+    await db.commit()
+    row = result.mappings().one()
+    return {"alert": {"id": row["alert_id"], "title": row["title"], "message": row["message"], "audience": row["audience"], "status": row["status"], "created_at": row["created_at"].isoformat()}}
+
+
 @router.get("/admin-dashboard")
 async def admin_dashboard(db: AsyncSession = Depends(get_db_session)) -> dict[str, object]:
     await ensure_accounts_columns(db)
     await ensure_admin_sections(db)
+    await ensure_faculties_table(db)
     result = await db.execute(text("""
         SELECT first_name, last_name, email, student_id, role, faculty, created_at
         FROM accounts ORDER BY created_at DESC
@@ -195,12 +351,25 @@ async def admin_dashboard(db: AsyncSession = Depends(get_db_session)) -> dict[st
     for user in users:
         faculty = user["faculty"] or "Unassigned"
         departments[faculty] = departments.get(faculty, 0) + 1
+    faculty_rows = await db.execute(text("SELECT name FROM faculties ORDER BY name"))
+    for faculty in faculty_rows.scalars().all():
+        departments.setdefault(faculty, 0)
     sections_result = await db.execute(text("SELECT section_key, eyebrow, title, description, metrics, records FROM admin_sections ORDER BY section_key"))
     sections = {row["section_key"]: {"eyebrow": row["eyebrow"], "title": row["title"], "description": row["description"], "metrics": json.loads(row["metrics"]), "records": json.loads(row["records"])} for row in sections_result.mappings().all()}
     sections["Users & Access"] = {"eyebrow": "Identity directory", "title": "Users & Access", "description": "Govern student, staff, and privileged access across every campus operation.", "metrics": [[str(len(users)), "directory users", "Live database total"], [str(sum(user["role"] != "student" for user in users)), "privileged accounts", "Managed by admin"], ["0", "access events / 24h", "Database total"]], "records": [[user["name"], f"{user['id']} • {user['role']}" + (f" • {user['faculty']}" if user["faculty"] else ""), f"{user['status']} • {user['lastSeen']}"] for user in users]}
     sections["Moderator Team"] = {"eyebrow": "Operational staffing", "title": "Moderator Team", "description": "Monitor moderator coverage, escalation ownership, and platform privileges for live operations.", "metrics": [[str(len(moderators)), "moderators on duty", "Live database total"], [str(sum(bool(user["faculty"]) for user in moderators)), "assigned faculties", "Database total"], ["0", "reviews due", "Database records"]], "records": [[user["name"], f"{user['id']} • {user['faculty'] or 'Faculty not assigned'}", f"{user['status']} • {user['lastSeen']}"] for user in moderators]}
     sections["Faculties & Departments"]["metrics"] = [[str(len(departments)), "departments", "Live database total"], [str(len(departments)), "department groups", "Database records"], [str(len(users)), "assigned users", "Live database total"]]
     sections["Faculties & Departments"]["records"] = [[name, f"{count} users in department", "Database record"] for name, count in sorted(departments.items(), key=lambda item: item[1], reverse=True)]
+    await ensure_stations_table(db)
+    station_rows = await db.execute(text("SELECT name, campus, lockers FROM recovery_stations ORDER BY name"))
+    saved_stations = [[row["name"], f"{row['lockers']} lockers • {row['campus']}", "Open • Database record"] for row in station_rows.mappings().all()]
+    if saved_stations:
+        sections["Recovery Stations"]["records"] = saved_stations
+    await ensure_alerts_table(db)
+    alert_rows = await db.execute(text("SELECT title, message, audience, status FROM campus_alerts ORDER BY created_at DESC"))
+    saved_alerts = [[row["title"], f"{row['audience']} • {row['message']}", row["status"]] for row in alert_rows.mappings().all()]
+    if saved_alerts:
+        sections["Campus Broadcasts"]["records"] = saved_alerts
     return {
         "users": users,
         "metrics": {
