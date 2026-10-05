@@ -2,12 +2,11 @@
 
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import {
-  AlertTriangle, ArrowDownToLine, BellRing, Check, ChevronDown, CircleHelp,
-  Eye, FileText, Filter, KeyRound, LayoutDashboard, MapPin, MoreHorizontal,
-  PackageCheck, Radio, Search, Settings2, ShieldCheck, Siren, SlidersHorizontal,
-  UserPlus, UsersRound, X,
+  AlertTriangle, ArrowDownToLine, BellRing, Check, ChevronDown, CircleCheck,
+  CircleHelp, Eye, FileText, Filter, KeyRound, LayoutDashboard, Link2, MapPin,
+  MoreHorizontal, PackageCheck, Radio, Search, Settings2, ShieldCheck, Siren,
+  SlidersHorizontal, UserPlus, UsersRound, X,
 } from "lucide-react";
-import { getSession } from "../auth";
 import { AdminThemeToggle, ProfileDropdown } from "../theme-provider";
 
 const FOUND_ITEMS_STORAGE_KEY = "unialert-found-items";
@@ -25,7 +24,7 @@ const featureViews: Record<string, { eyebrow: string; title: string; description
   "Moderator Team": { eyebrow: "Staff operations", title: "Moderator Team", description: "Monitor on-duty moderators, permissions, and handoff coverage for active cases.", metrics: ["18 on duty", "4 escalation leads", "100% shift coverage"], rows: ["Officer J. Vargas • Lead Dispatcher • Online", "Priya Nair • Claims Moderator • Reviewing", "Jon Bell • Custody Auditor • Online"] },
   "Lost Reports": { eyebrow: "Property pipeline", title: "Lost Reports", description: "Track open lost-property reports and prioritize cases with strong match signals.", metrics: ["53 open reports", "14 new today", "22 possible matches"], rows: ["LR-2025-0941 • Midnight Blue Leather Backpack • Possible match", "LR-2025-0812 • Apple AirPods Pro • Searching", "LR-2025-0684 • Ti-Nspire Calculator • Awaiting review"] },
   "Found Items": { eyebrow: "Property pipeline", title: "Found Items", description: "Review newly secured property, custody locations, and intake status.", metrics: ["89 secured items", "12 new today", "89 total items"], rows: ["FOUND-378300 • Watch • Electronics • Central Police Center", "FOUND-628377 • iPhone 18 Pro Max • Electronics • Student Union Desk", "FOUND-410228 • Graphing Calculator • Books & math • Math Annex"] },
-  "Claim Approvals": { eyebrow: "Claims control", title: "Claim Approvals", description: "Authorize verified claims before a physical station handover is released.", metrics: ["7 urgent claims", "4 ready to release", "2 identity checks"], rows: claims.map((claim) => `${claim.id} • ${claim.student} • ${claim.item} • ${claim.category}`) },
+  "Claim Approvals": { eyebrow: "Claims control", title: "Claim Approvals", description: "Authorize verified claims before a physical station handover is released.", metrics: ["7 approved claims", "4 pending claims", "11 total claims"], rows: claims.map((claim) => `${claim.id} • ${claim.student} • ${claim.item} • ${claim.category}`) },
   "Campus Broadcasts": { eyebrow: "Communications", title: "Campus Broadcasts", description: "Manage active campus advisories and monitor delivery across notification channels.", metrics: ["2 live broadcasts", "12,410 delivered", "99.1% delivery rate"], rows: ["Science Quadrangle Access Restriction • Live", "West Gym Theft Prevention Alert • Advisory", "Blue Line Shuttle Diversion • Scheduled"] },
   "Faculties & Depts": { eyebrow: "Campus directory", title: "Faculties & Departments", description: "Maintain campus department contacts and route property notifications to the right teams.", metrics: ["28 departments", "6 escalation groups", "100% contact coverage"], rows: ["Computer Engineering • ICT Research Complex • Active", "Medical Biology • West Science Quad • Active", "Campus Facilities • Central Operations • On call"] },
   "Recovery Stations": { eyebrow: "Custody network", title: "Recovery Stations", description: "Monitor station capacity, opening status, and item handoffs across campus hubs.", metrics: ["8 active hubs", "62% locker capacity", "24h SLA target"], rows: ["Central Police Dispatch • Open • 18 secure lockers", "Library Main Service Desk • Open • 9 secure lockers", "Student Union Information • Open • 6 secure lockers"] },
@@ -184,15 +183,26 @@ function AdminFeatureView({ name }: { name: string }) {
   };
 
   const metricCards = name === "User Registry" ? [
-    { label: "Verified users", value: "38,420", icon: ShieldCheck },
-    { label: "Active reviews", value: "96", icon: UsersRound },
-    { label: "Total users", value: "98.2%", icon: Search },
+    { label: "Verified users", value: "38,420", icon: ShieldCheck, tone: "success" },
+    { label: "Active reviews", value: "96", icon: AlertTriangle, tone: "danger" },
+    { label: "Total users", value: "98.2%", icon: UsersRound, tone: "success" },
   ] : view.metrics.map((metric, index) => {
     const [value, ...labelParts] = metric.split(" ");
-    return { label: labelParts.join(" "), value, icon: [ShieldCheck, UsersRound, Search][index % 3] };
+    const label = labelParts.join(" ");
+    const formattedLabel = label ? label.charAt(0).toUpperCase() + label.slice(1) : label;
+    const isPossibleMatchCard = name === "Lost Reports" && formattedLabel.toLowerCase().includes("possible matches");
+    const isTotalItemsCard = name === "Found Items" && formattedLabel.toLowerCase().includes("total items");
+    const isTotalClaimsCard = name === "Claim Approvals" && formattedLabel.toLowerCase().includes("total claims");
+    const palette = index === 0 ? "success" : "danger";
+    return {
+      label: formattedLabel,
+      value,
+      icon: isPossibleMatchCard ? Link2 : isTotalItemsCard || isTotalClaimsCard ? CircleCheck : [ShieldCheck, AlertTriangle, AlertTriangle][index % 3],
+      tone: isPossibleMatchCard || isTotalItemsCard || isTotalClaimsCard ? "success" : palette,
+    };
   });
 
-  const featureActionLabel = isLostReports ? "Report lost item" : isFoundItems ? "Report found item" : isClaimApprovals ? "" : "Add user";
+  const featureActionLabel = isLostReports ? "Report item" : isFoundItems ? "Report found item" : isClaimApprovals ? "" : "Add user";
   const openFeatureAction = () => {
     if (isClaimApprovals) return;
     if (isLostReports) {
@@ -225,18 +235,28 @@ function AdminFeatureView({ name }: { name: string }) {
           <p>{view.description}</p>
         </div>
         {!isClaimApprovals && (
-          <button className="danger-button" onClick={openFeatureAction}>
-            {isLostReports ? <FileText size={15} /> : <UserPlus size={15} />}
-            {featureActionLabel}
-          </button>
+          <div className="feature-header-actions">
+            <button className={isUserRegistry || isFoundItems ? "success-button" : "danger-button"} onClick={openFeatureAction}>
+              {isLostReports ? <FileText size={15} /> : <UserPlus size={15} />}
+              {featureActionLabel}
+            </button>
+            {isUserRegistry && (
+              <div className="export-button-group stacked-export-group">
+                <button className="export-button primary-button" type="button">PDF</button>
+                <button className="export-button primary-button" type="button">CSV</button>
+                <button className="export-button primary-button" type="button">Excel</button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
       <div className="feature-metrics">
-        {metricCards.map(({ label, value }) => (
+        {metricCards.map(({ label, value, icon: Icon, tone }) => (
           <div className="feature-metric" key={label}>
             <div className="metric-label-row">
               <span>{label}</span>
+              {Icon ? <Icon className={`metric-card-icon ${tone ?? "default"}`} size={18} aria-hidden="true" /> : null}
             </div>
             <strong>{value}</strong>
           </div>
@@ -281,8 +301,7 @@ function AdminFeatureView({ name }: { name: string }) {
             <span>{isUserRegistry ? "Name" : isFoundItems ? "Item ID" : "Report ID"}</span>
             <span>{isUserRegistry ? "Email" : "Item"}</span>
             {isFoundItems && <span>Category</span>}
-            <span>{isUserRegistry ? "Faculty" : isFoundItems ? "Location" : "Status"}</span>
-            {isLostReports && <span>Status</span>}
+            <span>{isUserRegistry ? "Faculty" : isFoundItems ? "Location" : "Match"}</span>
             <span>Actions</span>
           </div>
         )}
@@ -447,7 +466,7 @@ function AdminFeatureView({ name }: { name: string }) {
             <label className="add-user-field">University email<input type="email" placeholder="jordan.lee@university.edu" /></label>
             <label className="add-user-field">Password<input type="password" placeholder="Create a secure password" /></label>
             <label className="add-user-field">Faculty<select defaultValue=""><option value="" disabled>Select faculty</option><option>Applied Science Faculty</option><option>Computer Engineering</option><option>Medical Biology</option></select></label>
-            <button className="danger-button add-user-submit" onClick={() => setAddUserOpen(false)}><UserPlus size={14} /> Create user</button>
+            <button className="success-button add-user-submit" onClick={() => setAddUserOpen(false)}><UserPlus size={14} /> Create user</button>
           </div>
         </div>
       )}
@@ -519,18 +538,17 @@ function AdminFeatureView({ name }: { name: string }) {
 }
 
 export default function HomePage() {
-  const [moderatorName, setModeratorName] = useState("J. Vargas");
-  const [moderatorInitials, setModeratorInitials] = useState("JV");
   const [activeNav, setActiveNav] = useState("Overview & Triage");
   const [claimFilter, setClaimFilter] = useState("All Risk Tiers");
-  const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
-  const [claimActionMode, setClaimActionMode] = useState<"view" | "edit">("view");
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastSent, setBroadcastSent] = useState(false);
   const [search, setSearch] = useState("");
   const [adminNotifications, setAdminNotifications] = useState<Array<{ claim_id: string; student_name: string; item_name: string; created_at: string | null; status: string }>>([]);
   const [itemSummary, setItemSummary] = useState({ found_items: 89, lost_items: 53 });
-  const [feedRefresh, setFeedRefresh] = useState(0);
+  const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
+  const [claimActionMode, setClaimActionMode] = useState<"view" | "edit">("view");
+  const moderatorName = "Faculty Moderator";
+  const moderatorInitials = "FM";
 
   const handleNavClick = (label: string) => {
     setActiveNav(label);
@@ -548,15 +566,6 @@ export default function HomePage() {
     window.localStorage.removeItem("unialert-session");
     window.location.reload();
   };
-
-  useEffect(() => {
-    const session = getSession();
-    if (!session) return;
-
-    const name = `${session.firstName} ${session.lastName}`.trim();
-    setModeratorName(name || "J. Vargas");
-    setModeratorInitials(`${session.firstName.charAt(0)}${session.lastName.charAt(0)}`.toUpperCase() || "JV");
-  }, []);
 
   const navSections: Array<{ label: string; items: Array<[string, typeof Search | typeof PackageCheck | typeof KeyRound | typeof LayoutDashboard | typeof UsersRound | typeof ShieldCheck, string, string]> }> = [
     { label: "", items: [["Overview & Triage", LayoutDashboard, "", "active"], ["User Registry", UsersRound, "", ""], ["Moderator Team", ShieldCheck, "", ""]] },
@@ -614,7 +623,20 @@ export default function HomePage() {
       loadItemSummary();
     }, 15000);
     return () => window.clearInterval(intervalId);
-  }, [feedRefresh]);
+  }, []);
+
+  useEffect(() => {
+    const handleRefreshClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const refreshButton = target.closest<HTMLButtonElement>(".queue-tools button");
+      if (!refreshButton) return;
+      refreshButton.classList.add("is-refreshing");
+      window.location.reload();
+    };
+
+    document.addEventListener("click", handleRefreshClick);
+    return () => document.removeEventListener("click", handleRefreshClick);
+  }, []);
 
   const filteredClaims = claims.filter((claim) => `${claim.id} ${claim.student} ${claim.item}`.toLowerCase().includes(search.toLowerCase()) && (claimFilter === "All Risk Tiers" || (claimFilter === "Immediate" ? claim.tone === "red" : claim.tone !== "red")));
 
@@ -625,7 +647,7 @@ export default function HomePage() {
 
   return <div className="admin-shell">
     <header className="topbar"><div className="topbar-brand"><span className="mini-mark"><ShieldCheck size={14} /></span><span><b>UniAlert</b><small>Administrator Portal</small></span></div><div className="topbar-context"><ShieldCheck size={14} /> Campus Safety &amp; Property Recovery Service</div><div className="topbar-actions"><label className="global-search"><Search size={13} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search case ID, items..." /></label><button className="icon-button" aria-label="Notifications"><BellRing size={16} />{adminNotifications.length > 0 && <i>{adminNotifications.length}</i>}</button><button className="beacon-button" onClick={() => setBroadcastOpen(true)}><Siren size={14} /> Emergency Beacon</button><ProfileDropdown name={moderatorName} initials={moderatorInitials} role="Faculty Moderator" summary="Campus property and claim operations" email="" /></div><AdminThemeToggle /></header>
-    <main className="dashboard"><div className="workspace"><aside className="console-rail"><div className="rail-profile"><span className="rail-profile-avatar">{moderatorInitials}</span><span><b>{moderatorName}</b><small>Faculty Moderator</small></span></div><div className="rail-card"><div className="rail-title"><span></span><b></b></div>{navSections.map((section) => <div className="rail-section" key={section.label || "overview-section"}>{section.label && <small>{section.label}</small>}{section.items.map(([label, Icon, count, state]) => <button key={label} className={`rail-link ${activeNav === label ? "current" : ""} ${state}`} onClick={() => handleNavClick(label)}><span><Icon size={14} /> {label}</span>{count && <b>{count}</b>}</button>)}</div>)}</div><div className="rail-footer"><ProfileDropdown name={moderatorName} initials={moderatorInitials} role="Faculty Moderator" summary="Campus property and claim operations" email="" resetLabel="Reset admin details" onReset={handleResetAdminDetails} /></div></aside>
+    <main className="dashboard"><div className="workspace"><aside className="console-rail"><div className="rail-profile"><span className="rail-profile-avatar">{moderatorInitials}</span><span><b>{moderatorName}</b><small>Faculty Moderator</small></span></div><div className="rail-card"><div className="rail-title"><span></span><b></b></div>{navSections.map((section) => <div className="rail-section" key={section.label || "overview-section"}>{section.label && <small>{section.label}</small>}{section.items.map(([label, Icon, count, state]) => <button key={label} className={`rail-link ${activeNav === label ? "current" : ""} ${state}`} onClick={() => handleNavClick(label)}><span><Icon size={14} /> {label}</span>{count && <b>{count}</b>}</button>)}</div>)}</div></aside>
       <section className="content-stage">{activeNav === "Overview & Triage" && <div className="page-heading"><div><div className="eyebrow"><b></b><span></span><span></span></div><h1>Faculty Moderator &amp; Property Command</h1><p></p></div></div>}
         {activeNav === "Overview & Triage" && adminNotifications.length > 0 && <div className="notification-stack">
           {adminNotifications.map((notification) => <div className="notification-item" key={notification.claim_id}><span className="notification-dot" /><div><strong>{notification.claim_id}</strong><small>{notification.student_name} • {notification.item_name}</small><time>{notification.created_at ? new Date(notification.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Just now"}</time></div></div>)}
@@ -633,7 +655,7 @@ export default function HomePage() {
         {activeNav === "Overview & Triage" ? <>
         <div className="kpi-grid">{[["Users Registry", "38,420", "98.2% total users", ShieldCheck, "good"], ["Lost Reports", String(itemSummary.lost_items), "Open and tracked", Search, "blue"], ["Found Items", String(itemSummary.found_items), "Verified & secured", PackageCheck, "neutral"], ["Pending Claims", "7", "Physical ID check required", AlertTriangle, "bad"], ["Campus Advisories", "2", "Live broadcasts active", BellRing, "bad"], ["Reunification Rate", "91.3%", "+4.2% semester goal", Check, "good"]].map(([label, value, note, Icon, tone]) => <article className="kpi-card" key={label as string}><div><span>{label as string}</span><Icon size={15} className={tone as string} /></div><strong className={tone as string}>{value as string}</strong><small className={tone as string}>{note as string}</small></article>)}</div>
         <div className="analytics-grid"><article className="panel trend-panel"><div className="panel-heading"><div><h2>Lost vs. Found Volume &amp; Recovery Trends</h2><p>Real-time intake tracking and automated matching.</p></div><div className="chart-legend"><span className="legend-found">Found <b>(342)</b></span><span className="legend-lost">Lost <b>(284)</b></span><span className="legend-reunified">Reunified <b>(312)</b></span></div></div><div className="chart"><div className="chart-grid"><i /><i /><i /><i /></div><div className="bars">{[55, 42, 68, 48, 78, 59, 86].map((height, index) => <span key={index} style={{ height: `${height}%` }} />)}</div><svg viewBox="0 0 500 160" preserveAspectRatio="none" aria-label="Recovery trend line"><path d="M0 125 C70 93, 100 132, 165 104 S260 116, 320 75 S405 86, 500 34" /></svg></div><div className="chart-labels"><span>Week 38</span><span>Week 39</span><span>Week 40</span><span>Week 41</span><span>Week 42</span><b>Week 43 (Live)</b></div></article><article className="panel hotspot-panel"><div className="panel-heading"><div><h2>Intake Hotspots</h2><p>Top high-incident recovery locations across campus hubs.</p></div><MapPin size={15} /></div>{[["W.E.B. Central Library", "34%", "31 items"], ["ICT Research Complex", "22%", "20 items"], ["Student Union Plaza", "18%", "16 items"], ["Sports & Aquatics Arena", "14%", "12 items"], ["North Commons Cafeteria", "12%", "10 items"]].map(([name, percent, total]) => <div className="hotspot" key={name}><div><span>{name}</span><b>{percent}</b></div><div className="progress"><i style={{ width: percent }} /></div><small>{total}</small></div>)}<footer>Locker capacity <b>62% Occupied</b></footer></article><article className="panel pie-chart-panel"><div className="panel-heading"><div><h2>Claim Resolution</h2><p>Time-to-return chain-of-custody efficiency.</p></div><span className="optimal">Optimal</span></div><div className="sla-chart" aria-label="Claim resolution pie chart"><div className="sla-pie"><div className="sla-pie-center"><strong>72%</strong><small>On Time</small></div></div></div><div className="sla-copy"><span><b>On-time claims</b><strong>72%</strong></span><span><b>Escalations</b><strong>18%</strong></span><span><b>Delayed</b><strong>10%</strong></span></div></article></div>
-        <section className="panel queue-panel"><div className="queue-header"><div className="queue-title"><span className="queue-icon"><KeyRound size={17} /></span><div><div className="section-kicker">High-value claim review</div><h2>High-Value Claim Verification Queue</h2><p>Claims for high-tier assets require moderator authorization before physical station handover.</p></div><b className="immediate-badge">7 Immediate Action Required</b></div><div className="queue-tools"><label><Filter size={13} /><select value={claimFilter} onChange={(event) => setClaimFilter(event.target.value)}><option>All Risk Tiers</option><option>Immediate</option><option>Review</option></select><ChevronDown size={13} /></label><button onClick={() => { setSearch(""); setFeedRefresh((current) => current + 1); }}><SlidersHorizontal size={13} /> Refresh Feed</button></div></div><div className="claim-table"><div className="table-head"><span>CLAIM ID</span><span>STUDENT / ID</span><span>ITEM SPEC &amp; CUSTODY</span><span /></div>{filteredClaims.map((claim) => <div className="claim-row" key={claim.id}><div><b className={`risk-dot ${claim.tone}`} /> <strong>{claim.id}</strong><small>Logged {claim.age}</small></div><div className="student"><span className={`initials ${claim.tone}`}>{claim.initials}</span><span><b>{claim.student}</b><small>{claim.identity} • {claim.faculty}</small></span></div><div className="item-summary"><span className="item-thumb"><PackageCheck size={14} /></span><span><b>{claim.item}</b><small>{claim.detail}</small></span></div><button className="row-menu" aria-label={`More options for ${claim.id}`}><MoreHorizontal size={17} /></button></div>)}{filteredClaims.length === 0 && <div className="empty-state">No claims match this filter.</div>}<footer className="table-footer"><span>Showing {filteredClaims.length} of 7 high-risk priority claims</span><div><button>Previous</button><b>1</b><button>2</button><button>Next</button></div></footer></div></section>
+        <section className="panel queue-panel"><div className="queue-header"><div className="queue-title"><span className="queue-icon"><KeyRound size={17} /></span><div><h2>High-Value Claim Verification Queue</h2></div></div><div className="queue-tools"><label><Filter size={13} /><select value={claimFilter} onChange={(event) => setClaimFilter(event.target.value)}><option>All Risk Tiers</option><option>Immediate</option><option>Review</option></select><ChevronDown size={13} /></label><button onClick={() => setSearch("")}><SlidersHorizontal size={13} /> Refresh Feed</button></div></div><div className="claim-table"><div className="table-head"><span>CLAIM ID</span><span>USERNAME</span><span>ITEM SPEC &amp; CUSTODY</span><span>CATEGORY</span><span>ACTIONS</span></div>{filteredClaims.map((claim) => <div className="claim-row" key={claim.id}><div><b className={`risk-dot ${claim.tone}`} /> <strong>{claim.id}</strong><small>Logged {claim.age}</small></div><div className="student"><span className={`initials ${claim.tone}`}>{claim.initials}</span><span><b>{claim.student}</b><small>{claim.identity} • {claim.faculty}</small></span></div><div className="item-summary"><span className="item-thumb"><PackageCheck size={14} /></span><span><b>{claim.item}</b><small>{claim.detail}</small></span></div><div className="claim-category"><strong>{claim.category}</strong></div><span className="claim-row-actions"><button className="claim-row-action" aria-label={`Edit claim ${claim.id}`} title="Edit claim" onClick={() => openClaimAction(claim, "edit")}><SlidersHorizontal size={14} /></button><button className="claim-row-action" aria-label={`View claim ${claim.id}`} title="View claim" onClick={() => openClaimAction(claim, "view")}><Eye size={14} /></button></span></div>)}{filteredClaims.length === 0 && <div className="empty-state">No claims match this filter.</div>}<footer className="table-footer"><span>Showing {filteredClaims.length} of 7 high-risk priority claims</span><div><button>Previous</button><b>1</b><button>2</button><button>Next</button></div></footer></div></section>
         <section className="panel composer" id="quick-broadcast-box"><div className="composer-heading"><span className="queue-icon"><Radio size={17} /></span><div><div className="section-kicker">Issue urgent campus alert</div><h2>Broadcast Composer</h2><p>Deploy immediate multi-channel advisories to student mobile push, university emails, and public signage in 3 clicks.</p></div><span className="fast-publish">FAST-PUBLISH SYSTEM</span></div><div className="composer-body"><div className="severity"><span>1. Select Severity Level</span><div><button className="selected"><CircleHelp size={14} /> Advisory</button><button><AlertTriangle size={14} /> Urgent Warning</button><button><X size={14} /> Lockdown / Evac</button></div><label>Quick Template Preload <select><option>Custom Manual Preload</option><option>Severe Weather</option><option>Building Closure</option></select></label></div><div className="message-field"><span>2. Alert Headline &amp; Push Copy</span><input defaultValue="Caution: Science Quadrangle Access Restriction" /><textarea defaultValue="Maintenance crew dispatched for transformer inspection. Please defer pedestrian traffic around North Gate." /><div className="channel-checks"><label><input type="checkbox" defaultChecked /> Push Notification</label><label><input type="checkbox" defaultChecked /> Campus Email Blast</label><label><input type="checkbox" defaultChecked /> Hall LED Displays</label></div></div><div className="authorize"><span>3. Authorization</span><p>Signed as: Officer J. Vargas (Lead Dispatcher)</p><small>Audit Hash: #AUTH-991204</small><button onClick={() => setBroadcastSent(true)}><Check size={15} /> Authorize &amp; Transmit</button>{broadcastSent && <b className="sent-message">Broadcast queued for dispatch.</b>}</div></div></section>
       </> : <AdminFeatureView name={activeNav} />}
       </section></div></main>
