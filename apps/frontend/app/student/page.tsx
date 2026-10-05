@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeftRight, Bell, ClipboardCheck, LayoutDashboard, PackageSearch } from "lucide-react";
 import { ProfileDropdown, ThemeToggle } from "../theme-provider";
 import { API_URL, getSession, submitClaim } from "../auth";
 
@@ -86,7 +87,7 @@ type StudentDashboardData = {
 
 export default function StudentDashboardPage() {
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState("Student Dashboard");
+  const [activeSection, setActiveSection] = useState("User Dashboard");
   const [reportOpen, setReportOpen] = useState(false);
   const [reportType, setReportType] = useState<"found" | "lost">("found");
   const [reportSubmitted, setReportSubmitted] = useState(false);
@@ -160,17 +161,7 @@ export default function StudentDashboardPage() {
   return (
     <div className="student-dashboard">
       <aside className="student-sidebar">
-        <div className="sidebar-header">
-          <div className="sidebar-brand">
-            <div className="brand-mark">U</div>
-            <div className="brand-copy">
-              <span className="brand-name">UniAlert</span>
-              <small>Fall 2025 Portal</small>
-            </div>
-          </div>
-        </div>
-
-            <div className="user-pill">
+        <div className="user-pill">
           <div className="avatar">{initials}</div>
           <div className="user-meta">
             <span>{displayName}</span>
@@ -178,18 +169,15 @@ export default function StudentDashboardPage() {
           </div>
         </div>
 
+        <div className="student-nav-label">User services</div>
         <nav className="side-nav">
           {[
-            ["Student Dashboard", "dashboard"],
-            ["Find an Item", "find"],
-            ["Campus Alerts", "alerts"],
-          ].map(([label]) => <button key={label} className={`nav-item ${activeSection === label ? "active" : ""}`} onClick={() => setActiveSection(label)}>{label}</button>)}
+            { label: "User Dashboard", icon: <LayoutDashboard size={15} /> },
+            { label: "Find an Item", icon: <PackageSearch size={15} /> },
+            { label: "Campus Alerts", icon: <Bell size={15} /> },
+          ].map(({ label, icon }) => <button key={label} className={`nav-item ${activeSection === label ? "active" : ""}`} onClick={() => setActiveSection(label)}><span className="nav-icon">{icon}</span><span>{label}</span></button>)}
         </nav>
 
-        <div className="dispatch-box">
-          <span className="dispatch-label">Police Dispatch</span>
-          <strong>555-0199 | Ext. 44</strong>
-        </div>
       </aside>
 
       <main className="student-content">
@@ -211,25 +199,11 @@ export default function StudentDashboardPage() {
         </header>
 
         <div className="content-area">
-          {activeSection !== "Student Dashboard" && <section className="student-subview">
+          {activeSection !== "User Dashboard" && <section className="student-subview">
             <div className="subview-heading"><div><span className="eyebrow">{activeSection === "Find an Item" ? "Property recovery" : "Campus communications"}</span><h1>{activeSection}</h1><p>{activeSection === "Find an Item" ? "Search recently recovered property and review possible matches across campus stations." : "Stay informed about safety, facility, and operational notices across campus."}</p></div>{activeSection === "Find an Item" && <button className="soft-accent active" onClick={() => { setReportType("found"); setReportOpen(true); }}>Report Found Item</button>}</div>
             {activeSection === "Find an Item" ? <div className="student-subview-grid"><section className="panel search-results-panel"><div className="panel-header"><div><span className="eyebrow">Recovered property</span><h2>Available items</h2></div><div className="header-sort"><span>Latest first</span></div></div>{dashboardData.campusFound.map((item) => <article className="search-result" key={item.title}><div className={`thumb ${item.tone}`}><span>{item.title.charAt(0)}</span></div><div><span className="found-status">{item.status}</span><h3>{item.title}</h3><small>{item.place} • {item.time}</small></div><button className="claim-button">{item.action}</button></article>)}</section><section className="panel search-results-panel"><div className="panel-header"><div><span className="eyebrow">Possible matches</span><h2>Reports to review</h2></div></div>{dashboardData.matches.map((item) => <article className="match-result" key={item.caseId}><div><strong>{item.name}</strong><small>{item.location} • {item.caseId}</small></div><span className={`tag ${item.tone}`}>{item.status}</span></article>)}</section></div> : <section className="panel alerts-directory"><div className="panel-header"><div><span className="eyebrow">Live bulletins</span><h2>Campus alerts</h2></div><span className="status-pill success">{dashboardData.bulletinItems.length} active</span></div>{dashboardData.bulletinItems.map((item) => <article key={item.title} className={`bulletin-card ${item.color}`}><div className="bulletin-head"><span>{item.type}</span><time>{item.time}</time></div><h3>{item.title}</h3><p>{item.text}</p></article>)}</section>}
           </section>}
-          <div className={activeSection === "Student Dashboard" ? "dashboard-home" : "dashboard-home hidden-home"}>
-          <section className="match-alert">
-            <div className="alert-icon">⚠</div>
-            <div className="alert-copy">
-              <span className="alert-badge">Potential match detected</span>
-              <p>
-                An item logged as <strong>Midnight Blue Leather Backpack</strong> at ICT Lab 302 shares a 94% feature match with your report from yesterday.
-              </p>
-            </div>
-            <div className="alert-actions">
-              <button className="primary">Review Match</button>
-              <button className="secondary">Dismiss</button>
-            </div>
-          </section>
-
+          <div className={activeSection === "User Dashboard" ? "dashboard-home" : "dashboard-home hidden-home"}>
           <section className="welcome-card">
             <div className="verification-row">
               <span className="status-pill success">Verified Student Account</span>
@@ -247,14 +221,13 @@ export default function StudentDashboardPage() {
               <div className="welcome-actions">
                 <button className="soft-accent" onClick={() => { setReportType("lost"); setReportOpen(true); }}>Report Lost Item</button>
                 <button className="soft-accent active" onClick={() => { setReportType("found"); setReportOpen(true); }}>Report Found Item</button>
-                <button className="ghost-accent">Search Database</button>
               </div>
             </div>
           </section>
 
           <section className="summary-grid">
             <div className="summary-card">
-              <div className="summary-label">Lost items reported</div>
+              <div className="summary-card-head"><div className="summary-label">Lost items reported</div><span className="summary-card-icon blue"><PackageSearch size={16} /></span></div>
               <div className="summary-inner">
                 <span className="summary-number">2</span>
                 <span className="summary-meta">Active cases</span>
@@ -266,7 +239,7 @@ export default function StudentDashboardPage() {
             </div>
 
             <div className="summary-card">
-              <div className="summary-label">Safe transfer</div>
+              <div className="summary-card-head"><div className="summary-label">Safe transfer</div><span className="summary-card-icon teal"><ArrowLeftRight size={16} /></span></div>
               <div className="summary-inner">
                 <span className="summary-number">1</span>
                 <span className="summary-meta">Item transfer</span>
@@ -278,7 +251,7 @@ export default function StudentDashboardPage() {
             </div>
 
             <div className="summary-card">
-              <div className="summary-label">Live bulletins</div>
+              <div className="summary-card-head"><div className="summary-label">Live bulletins</div><span className="summary-card-icon amber"><Bell size={16} /></span></div>
               <div className="summary-inner">
                 <span className="summary-number">3</span>
                 <span className="summary-meta">Active alerts</span>
@@ -290,7 +263,7 @@ export default function StudentDashboardPage() {
             </div>
 
             <div className="summary-card">
-              <div className="summary-label">Pending claims</div>
+              <div className="summary-card-head"><div className="summary-label">Pending claims</div><span className="summary-card-icon violet"><ClipboardCheck size={16} /></span></div>
               <div className="summary-inner">
                 <span className="summary-number">2</span>
                 <span className="summary-meta">Verification queue</span>

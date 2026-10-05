@@ -303,7 +303,6 @@ export default function SystemAdminPage() {
             </button>
           ))}
         </nav>
-        <div className="system-status-card"><span><i /> SYSTEM STATUS</span><strong>All services operational</strong><small>Last integrity check 2 min ago</small><footer><span>API uptime</span><b>99.98%</b></footer></div>
       </aside>
 
       <main className="system-main">

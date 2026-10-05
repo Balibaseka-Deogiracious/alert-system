@@ -1554,66 +1554,28 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
   top: 0;
   height: 100vh;
   align-self: flex-start;
-  width: 260px;
-  background: #f2f5f8;
-  border-right: 1px solid #dee6f1;
+  width: 220px;
+  background: #eef4ff;
+  border-right: 1px solid #dce7f7;
   display: flex;
   flex-direction: column;
-  padding: 18px 16px 18px 18px;
-}
-
-.sidebar-header {
-  padding: 4px 0 16px;
-  border-bottom: 1px solid rgba(164, 181, 201, 0.4);
-}
-
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-left: 4px;
-}
-
-.sidebar-brand .brand-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #1d6fc9, #0d2b48);
-  color: white;
-  display: grid;
-  place-items: center;
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.brand-copy {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.05;
-}
-
-.brand-copy .brand-name {
-  font-size: 18px;
-  font-weight: 800;
-  color: #1d2d3a;
-}
-
-.brand-copy small {
-  color: #677c95;
-  font-size: 10px;
-  letter-spacing: 0.04em;
+  padding: 17px 13px;
 }
 
 .user-pill {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 18px 8px 8px;
+  padding: 8px;
+  border: 1px solid #e0e9f5;
+  border-radius: 8px;
+  background: white;
 }
 
 .avatar {
-  width: 34px;
-  height: 34px;
+  flex: 0 0 29px;
+  width: 29px;
+  height: 29px;
   border-radius: 50%;
   background: linear-gradient(135deg, #dbe7ff, #9cc0ff);
   color: #233952;
@@ -1630,42 +1592,56 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
 }
 
 .user-meta span {
-  font-size: 14px;
+  color: #1c3652;
+  font-size: 11px;
   font-weight: 700;
-  color: #243b52;
 }
 
 .user-meta small {
   color: #647b95;
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  font-size: 8px;
+}
+
+.student-nav-label {
+  margin: 22px 8px 8px;
+  color: #6b829d;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .side-nav {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 5px;
 }
 
 .nav-item {
-  border: none;
-  background: transparent;
-  text-align: left;
-  padding: 12px 12px 12px 14px;
-  border-radius: 11px;
-  color: #304963;
-  font-size: 15px;
-  font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
+  width: 100%;
+  padding: 10px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #34516f;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.nav-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 15px;
 }
 
 .nav-item.active {
-  background: linear-gradient(180deg, #0f2e4f, #0d2542);
+  background: #0f2942;
   color: white;
-  box-shadow: 0 12px 20px rgba(13, 37, 66, 0.12);
+  box-shadow: 0 5px 12px rgba(15, 41, 66, 0.16);
 }
 
 .dispatch-box {
@@ -1923,13 +1899,22 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
 }
 
 .content-area {
-  padding: 16px 18px 24px;
+  width: 100%;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 24px 28px 40px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .student-dashboard .hidden-home { display: none; }
+
+.dashboard-home {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 
 .student-subview {
   display: flex;
@@ -2042,7 +2027,7 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid #dfeaf7;
   border-radius: 18px;
-  padding: 14px 18px 18px;
+  padding: 20px 22px 22px;
 }
 
 .verification-row {
@@ -2076,12 +2061,12 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 18px;
+  margin-top: 22px;
 }
 
 .welcome-copy h1 {
   margin: 0;
-  font-size: clamp(2rem, 3vw, 3.1rem);
+  font-size: clamp(1.9rem, 2.7vw, 2.7rem);
   line-height: 1.1;
   letter-spacing: -0.05em;
   color: #1a2b3a;
@@ -2134,15 +2119,36 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
 }
 
 .summary-card {
   background: rgba(255,255,255,0.64);
   border: 1px solid #dfeaf7;
   border-radius: 15px;
-  padding: 14px 14px 12px;
+  padding: 17px 16px 15px;
 }
+
+.summary-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.summary-card-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 8px;
+}
+
+.summary-card-icon.blue { background: #e5f0ff; color: #2b6fbd; }
+.summary-card-icon.teal { background: #e1f7f0; color: #16836b; }
+.summary-card-icon.amber { background: #fff1d7; color: #b3761d; }
+.summary-card-icon.violet { background: #eee8ff; color: #7252b5; }
 
 .summary-label {
   color: #5d758f;
@@ -2185,14 +2191,14 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
 .split-grid {
   display: grid;
   grid-template-columns: minmax(0, 2.3fr) minmax(260px, 1fr);
-  gap: 18px;
+  gap: 22px;
 }
 
 .panel {
   background: rgba(255, 255, 255, 0.8);
   border: 1px solid #e5eef8;
   border-radius: 18px;
-  padding: 16px 14px 12px;
+  padding: 20px 18px 16px;
 }
 
 .panel-header {
@@ -2200,7 +2206,7 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .eyebrow {
@@ -2238,12 +2244,12 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
   letter-spacing: 0.08em;
   font-size: 10px;
   font-weight: 800;
-  padding: 10px 8px 8px;
+  padding: 11px 8px 10px;
   border-bottom: 1px solid #edf1f7;
 }
 
 .row-item {
-  padding: 12px 8px;
+  padding: 15px 8px;
   border-bottom: 1px solid #edf1f7;
 }
 
@@ -2319,13 +2325,13 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
 .bulletin-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 10px;
+  gap: 14px;
+  margin-top: 12px;
 }
 
 .bulletin-card {
   border-radius: 12px;
-  padding: 12px 12px 10px;
+  padding: 14px 14px 12px;
   border-left: 4px solid transparent;
   background: #f8faff;
 }
@@ -2374,7 +2380,7 @@ html[data-theme="dark"] .system-admin-shell .section-pie::before {
 .bottom-grid {
   display: grid;
   grid-template-columns: minmax(0, 2.1fr) minmax(260px, 0.9fr);
-  gap: 18px;
+  gap: 22px;
 }
 
 .recent-panel {
