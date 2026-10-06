@@ -3,6 +3,7 @@ from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
+from app.db.compat import adapt_ddl_for_dialect
 
 engine = create_async_engine(settings.database_url, pool_pre_ping=True)
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -10,7 +11,7 @@ SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=
 
 async def initialize_database() -> None:
     async with engine.begin() as connection:
-        await connection.exec_driver_sql("""
+        await connection.exec_driver_sql(adapt_ddl_for_dialect("""
             CREATE TABLE IF NOT EXISTS accounts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 first_name VARCHAR(120) NOT NULL,
@@ -22,7 +23,7 @@ async def initialize_database() -> None:
                 faculty VARCHAR(180),
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """, connection.dialect.name))
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:

@@ -2,9 +2,25 @@ from pathlib import Path
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
+
+
+def normalize_database_url(value: str) -> str:
+    if value.startswith("postgres://"):
+        value = value.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif value.startswith("postgresql://"):
+        value = value.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    if value.startswith("postgresql+asyncpg://"):
+        parsed = make_url(value)
+        query = dict(parsed.query)
+        if "sslmode" in query:
+            query["ssl"] = query.pop("sslmode")
+        value = parsed.set(query=query).render_as_string(hide_password=False)
+    return value
 
 
 class Settings(BaseSettings):
@@ -19,6 +35,8 @@ class Settings(BaseSettings):
     @field_validator("database_url")
     @classmethod
     def resolve_sqlite_path(cls, value: str) -> str:
+        value = normalize_database_url(value)
+
         prefix = "sqlite+aiosqlite:///"
         if value.startswith(prefix):
             database_path = Path(value[len(prefix):])

@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.compat import execute_ddl
 from app.db.session import get_db_session
 
 router = APIRouter()
@@ -41,7 +42,7 @@ def account_payload(row: Any) -> dict[str, str]:
 
 
 async def ensure_accounts_table(db: AsyncSession) -> None:
-    await db.execute(text("""
+    await execute_ddl(db, """
         CREATE TABLE IF NOT EXISTS accounts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             first_name VARCHAR(120) NOT NULL,
@@ -53,7 +54,7 @@ async def ensure_accounts_table(db: AsyncSession) -> None:
             faculty VARCHAR(180),
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
-    """))
+    """)
     await db.commit()
 
 

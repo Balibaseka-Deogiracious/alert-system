@@ -4,6 +4,7 @@ dist/
 build/
 .env
 *.db
+apps/backend/supabase password
 # Next.js build output
 .next/
 out/
