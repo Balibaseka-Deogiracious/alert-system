@@ -13,9 +13,7 @@ export type Account = {
 export type Session = Omit<Account, "password">;
 
 const SESSION_KEY = "unialert-session";
-export const API_URL = typeof window !== "undefined"
-  ? `${window.location.protocol}//${window.location.hostname}:8000/api`
-  : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export type AdminUser = {
   initials: string;
@@ -30,9 +28,32 @@ export type AdminUser = {
 
 export type AdminDashboard = {
   users: AdminUser[];
-  metrics: { users: number; moderators: number; students: number; departments: number };
+  metrics: {
+    users: number;
+    moderators: number;
+    students: number;
+    system_admins: number;
+    departments: number;
+    lost_items: number;
+    found_items: number;
+    pending_claims: number;
+    claims: number;
+    active_alerts: number;
+    alerts: number;
+    stations: number;
+    faculties: number;
+    audit_events_24h: number;
+    roles: number;
+  };
+  role_counts: Record<string, number>;
   departments: { name: string; users: number }[];
   sections: Record<string, { eyebrow: string; title: string; description: string; metrics: [string, string, string][]; records: [string, string, string][] }>;
+  items: { item_id: string; reporter_id: string; item_type: "lost" | "found"; item_name: string; category: string | null; description: string; location: string; status: string; created_at: string | null }[];
+  claims: { claim_id: string; student_id: string; student_name: string; item_name: string; location: string; status: string; created_at: string | null }[];
+  alerts: { alert_id: number; title: string; message: string; audience: string; status: string; created_at: string | null }[];
+  stations: { station_id: number; name: string; campus: string; lockers: number; created_at: string | null }[];
+  faculties: { faculty_id: number; name: string; campus: string; created_at: string | null }[];
+  audit_events: { event_id: number; actor_id: string | null; action: string; entity_type: string; entity_id: string | null; details: string | null; created_at: string | null }[];
 };
 
 export async function getAdminDashboard(): Promise<AdminDashboard> {
@@ -61,6 +82,26 @@ export async function createAdminUser(account: { firstName: string; lastName: st
   const data = await response.json();
   if (!response.ok) throw new Error(data.detail || "Unable to create user account.");
   return data.user as AdminUser;
+}
+
+export async function createAdminItem(item: { reporterId: string; itemType: "lost" | "found"; itemName: string; category?: string; description: string; location: string; imageData?: string; status?: string }): Promise<AdminDashboard["items"][number]> {
+  const response = await fetch(`${API_URL}/system/items`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reporter_id: item.reporterId, item_type: item.itemType, item_name: item.itemName, category: item.category || null, description: item.description, location: item.location, image_data: item.imageData || null, status: item.status || null }) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Unable to save item report.");
+  return data.item as AdminDashboard["items"][number];
+}
+
+export async function updateAdminItem(itemId: string, item: { itemName: string; category?: string; description: string; location: string; status: string }): Promise<AdminDashboard["items"][number]> {
+  const response = await fetch(`${API_URL}/system/items/${encodeURIComponent(itemId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item_name: item.itemName, category: item.category || null, description: item.description, location: item.location, status: item.status.toLowerCase().replaceAll(" ", "_") }) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Unable to update item.");
+  return data.item as AdminDashboard["items"][number];
+}
+
+export async function updateAdminClaim(claimId: string, status: string): Promise<void> {
+  const response = await fetch(`${API_URL}/system/claims/${encodeURIComponent(claimId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: status.toLowerCase().replaceAll(" ", "_") }) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Unable to update claim.");
 }
 
 export async function createAdminFaculty(faculty: { name: string; campus: string }): Promise<{ id: number; name: string; campus: string }> {
